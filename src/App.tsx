@@ -174,6 +174,20 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
+  if (screen !== 'lobby' || !activeRoomId || !currentUserId) {
+    return;
+  }
+
+  refreshLobby(activeRoomId);
+
+  const interval = setInterval(() => {
+    refreshLobby(activeRoomId);
+  }, 2000);
+
+  return () => clearInterval(interval);
+}, [screen, activeRoomId, currentUserId]);
+
+  useEffect(() => {
     let mounted = true;
 
     async function checkSession() {
@@ -375,93 +389,49 @@ export default function App() {
     }
   }
 
-  async function refreshLobby() {
-    if (!activeRoomId) return;
+  async function refreshLobby(roomId?: string) {
+  const targetRoomId = roomId || activeRoomId;
 
-    const { data: room, error: roomError } = await supabase
-      .from('rooms')
-      .select('id, code, host_id, status')
-      .eq('id', activeRoomId)
-      .maybeSingle();
+  if (!targetRoomId) return;
 
-    if (roomError) {
-      console.error('Erro ao buscar sala:', roomError);
-      return;
-    }
+  const { data: players, error } = await supabase.rpc(
+    'get_room_members',
+    { p_room_id: targetRoomId }
+  );
 
-    // A sala pode ter sido encerrada pelo anfitrião.
-    if (!room) {
-      setActiveRoomId('');
-      setActiveCode('');
-      setMembers([]);
-      setIsReady(false);
-      setRoomStatus('waiting');
-      setScreen('rooms');
-      setNotice('A sala foi encerrada.');
-      return;
-    }
+  if (error) {
+    console.error('Erro ao carregar jogadores:', error.message);
+    return;
+  }
 
-    setHostId(room.host_id);
-    setRoomStatus(room.status as 'waiting' | 'playing' | 'finished');
-    setActiveCode(room.code);
+  setMembers(players || []);
 
-    const { data: players, error: playersError } = await supabase.rpc(
-  'get_room_members',
-  { p_room_id: activeRoomId }
-);
+  const myMembership = (players || []).find(
+    (player: {
+      user_id: string;
+      is_ready: boolean;
+    }) => player.user_id === currentUserId
+  );
 
-if (playersError) {
-  console.error('Erro ao buscar jogadores:', playersError.message);
-  return;
+  setIsReady(myMembership?.is_ready ?? false);
 }
 
-console.log('Quantidade de jogadores:', players?.length);
-console.log(
-  'Jogadores:',
-  (players || []).map((player: {
-    display_name: string;
-    is_ready: boolean;
-    user_id: string;
-  }) => ({
-    nome: player.display_name,
-    pronto: player.is_ready,
-    usuario: player.user_id === currentUserId ? 'Você' : 'Outro jogador'
-  }))
-);
-    setMembers(players || []);
+async function toggleReady() {
+  if (!activeRoomId) return;
 
-    const myMembership = (players || []).find(
-      (player: { user_id: string }) => player.user_id === currentUserId
-    );
+  const { error } = await supabase.rpc('set_room_ready', {
+    p_room_id: activeRoomId,
+    p_is_ready: !isReady,
+  });
 
-    setIsReady(myMembership?.is_ready ?? false);
+  if (error) {
+    console.error('Erro ao definir pronto:', error.message);
+    setNotice(error.message);
+    return;
   }
 
-  async function toggleReady() {
-    if (!activeRoomId) return;
-
-    setLoading(true);
-    setNotice('');
-
-    try {
-      const nextReady = !isReady;
-
-      const { error } = await supabase.rpc('set_room_ready', {
-        p_room_id: activeRoomId,
-        p_is_ready: nextReady,
-      });
-
-      if (error) throw error;
-
-      await refreshLobby();
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : 'Não foi possível atualizar seu status.'
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  await refreshLobby(activeRoomId);
+}
 
   async function startRoom() {
     if (!activeRoomId) return;
