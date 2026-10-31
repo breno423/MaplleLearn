@@ -159,6 +159,19 @@ export default function App() {
   const [roomCode, setRoomCode] = useState('');
   const [activeCode, setActiveCode] = useState('');
   const [copied, setCopied] = useState(false);
+  const [activeRoomId, setActiveRoomId] = useState('');
+  const [currentUserId, setCurrentUserId] = useState('');
+  const [hostId, setHostId] = useState('');
+  const [members, setMembers] = useState<
+    {
+      user_id: string;
+      display_name: string;
+      is_ready: boolean;
+      joined_at: string;
+    }[]
+  >([]);
+  const [roomStatus, setRoomStatus] = useState<'waiting' | 'playing' | 'finished'>('waiting');
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -174,11 +187,12 @@ export default function App() {
       }
 
       if (data.session) {
+        setCurrentUserId(data.session.user.id);
         setScreen('rooms');
       }
     }
-    
-      
+
+
     checkSession();
 
     const {
@@ -187,11 +201,18 @@ export default function App() {
       if (!mounted) return;
 
       if (event === 'SIGNED_IN' && session) {
+        setCurrentUserId(session.user.id);
         setScreen('rooms');
         setNotice('');
       }
 
       if (event === 'SIGNED_OUT') {
+        setCurrentUserId('');
+        setActiveRoomId('');
+        setActiveCode('');
+        setMembers([]);
+        setIsReady(false);
+        setRoomStatus('waiting');
         setScreen('login');
         setMode('login');
       }
@@ -204,22 +225,22 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-  function resetLoading() {
-    if (document.visibilityState === 'visible') {
-      setLoading(false);
+    function resetLoading() {
+      if (document.visibilityState === 'visible') {
+        setLoading(false);
+      }
     }
-  }
 
-  window.addEventListener('pageshow', resetLoading);
-  window.addEventListener('focus', resetLoading);
-  document.addEventListener('visibilitychange', resetLoading);
+    window.addEventListener('pageshow', resetLoading);
+    window.addEventListener('focus', resetLoading);
+    document.addEventListener('visibilitychange', resetLoading);
 
-  return () => {
-    window.removeEventListener('pageshow', resetLoading);
-    window.removeEventListener('focus', resetLoading);
-    document.removeEventListener('visibilitychange', resetLoading);
-  };
-}, []);
+    return () => {
+      window.removeEventListener('pageshow', resetLoading);
+      window.removeEventListener('focus', resetLoading);
+      document.removeEventListener('visibilitychange', resetLoading);
+    };
+  }, []);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -293,26 +314,32 @@ export default function App() {
       setLoading(false);
     }
   }
-  function generateRoomCode() {
-    const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-    const code = Array.from(
-      { length: 4 },
-      () => characters[Math.floor(Math.random() * characters.length)]
-    ).join('');
-
-    return `FR-${code}`;
-  }
-
-  function createRoom() {
-    const code = generateRoomCode();
-
-    setActiveCode(code);
-    setScreen('lobby');
+  async function createRoom() {
+    setLoading(true);
     setNotice('');
+
+    try {
+      const { data, error } = await supabase.rpc('create_room');
+
+      if (error) throw error;
+
+      const room = data as { room_id: string; code: string };
+
+      setActiveRoomId(room.room_id);
+      setActiveCode(room.code);
+      setIsReady(false);
+      setRoomStatus('waiting');
+      setScreen('lobby');
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : 'Não foi possível criar a sala.'
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function joinRoom(e: React.FormEvent<HTMLFormElement>) {
+  async function joinRoom(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
 
     const code = roomCode.trim().toUpperCase();
@@ -322,9 +349,157 @@ export default function App() {
       return;
     }
 
-    setActiveCode(code);
+    setLoading(true);
     setNotice('');
-    setScreen('lobby');
+
+    try {
+      const { data, error } = await supabase.rpc('join_room', {
+        p_code: code,
+      });
+
+      if (error) throw error;
+
+      const room = data as { room_id: string; code: string };
+
+      setActiveRoomId(room.room_id);
+      setActiveCode(room.code);
+      setIsReady(false);
+      setRoomStatus('waiting');
+      setScreen('lobby');
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : 'Não foi possível entrar na sala.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function refreshLobby() {
+    if (!activeRoomId) return;
+
+    const { data: room, error: roomError } = await supabase
+      .from('rooms')
+      .select('id, code, host_id, status')
+      .eq('id', activeRoomId)
+      .maybeSingle();
+
+    if (roomError) {
+      console.error('Erro ao buscar sala:', roomError);
+      return;
+    }
+
+    // A sala pode ter sido encerrada pelo anfitrião.
+    if (!room) {
+      setActiveRoomId('');
+      setActiveCode('');
+      setMembers([]);
+      setIsReady(false);
+      setRoomStatus('waiting');
+      setScreen('rooms');
+      setNotice('A sala foi encerrada.');
+      return;
+    }
+
+    setHostId(room.host_id);
+    setRoomStatus(room.status as 'waiting' | 'playing' | 'finished');
+    setActiveCode(room.code);
+
+    const { data: players, error: playersError } = await supabase.rpc(
+      'get_room_members',
+      { p_room_id: activeRoomId }
+    );
+
+    if (playersError) {
+      console.error('Erro ao buscar jogadores:', playersError);
+      return;
+    }
+
+    setMembers(players || []);
+
+    const myMembership = (players || []).find(
+      (player: { user_id: string }) => player.user_id === currentUserId
+    );
+
+    setIsReady(myMembership?.is_ready ?? false);
+  }
+
+  async function toggleReady() {
+    if (!activeRoomId) return;
+
+    setLoading(true);
+    setNotice('');
+
+    try {
+      const nextReady = !isReady;
+
+      const { error } = await supabase.rpc('set_room_ready', {
+        p_room_id: activeRoomId,
+        p_is_ready: nextReady,
+      });
+
+      if (error) throw error;
+
+      await refreshLobby();
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : 'Não foi possível atualizar seu status.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function startRoom() {
+    if (!activeRoomId) return;
+
+    setLoading(true);
+    setNotice('');
+
+    try {
+      const { error } = await supabase.rpc('start_room', {
+        p_room_id: activeRoomId,
+      });
+
+      if (error) throw error;
+
+      await refreshLobby();
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : 'Não foi possível iniciar a partida.'
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function leaveRoom() {
+    if (!activeRoomId) return;
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.rpc('leave_room', {
+        p_room_id: activeRoomId,
+      });
+
+      if (error) throw error;
+
+      setHostId('');
+      setActiveRoomId('');
+      setActiveCode('');
+      setMembers([]);
+      setIsReady(false);
+      setRoomStatus('waiting');
+      setScreen('rooms');
+      setNotice('');
+    } catch (error) {
+      setNotice(
+        error instanceof Error ? error.message : 'Não foi possível sair da sala.'
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function copyRoomCode() {
@@ -619,10 +794,11 @@ export default function App() {
 
           <button
             className="back-link"
-            onClick={() => setScreen('login')}
+            onClick={leaveRoom}
+            disabled={loading}
           >
             <ArrowLeft size={16} />
-            Voltar
+            Sair da sala
           </button>
 
           <div className="workspace-heading">
@@ -758,40 +934,73 @@ export default function App() {
 
           <div className="lobby-card">
 
+            {notice && (
+              <div className="notice" role="status">
+                {notice}
+              </div>
+            )}
+
             <div className="lobby-topline">
               <span className="live-dot" />
               SALA PRIVADA
+
               <span className="waiting-label">
-                AGUARDANDO JOGADOR
+                {roomStatus === 'playing'
+                  ? 'PARTIDA INICIADA'
+                  : members.length === 2
+                    ? 'DOIS JOGADORES'
+                    : 'AGUARDANDO JOGADOR'}
               </span>
             </div>
 
             <div className="players">
+              {[0, 1].map((index) => {
+                const player = members[index];
+                const isMe = player?.user_id === currentUserId;
+                const isHost = player?.user_id === hostId;
 
-              <div className="player-slot player-ready">
-                <div className="avatar-circle">
-                  <Crown size={29} />
-                </div>
+                return (
+                  <React.Fragment key={index}>
+                    {index === 1 && <div className="versus">VS</div>}
 
-                <strong>Jogador 1</strong>
-                <span>Você • Anfitrião</span>
-                <em>Pronto</em>
-              </div>
+                    <div
+                      className={`player-slot ${player?.is_ready ? 'player-ready' : ''}`}
+                    >
+                      <div className={`avatar-circle ${!player ? 'empty-avatar' : ''}`}>
+                        {isHost ? (
+                          <Crown size={29} />
+                        ) : (
+                          <UserRound size={27} />
+                        )}
+                      </div>
 
-              <div className="versus">VS</div>
+                      <strong>
+                        {player
+                          ? player.display_name
+                          : 'Aguardando...'}
+                      </strong>
 
-              <div className="player-slot">
-                <div className="avatar-circle empty-avatar">
-                  <Users size={27} />
-                </div>
+                      <span>
+                        {!player
+                          ? 'Compartilhe o código'
+                          : isMe
+                            ? 'Você'
+                            : isHost
+                              ? 'Anfitrião'
+                              : 'Adversário'}
+                      </span>
 
-                <strong>Aguardando...</strong>
-                <span>Compartilhe o código</span>
-                <em className="waiting-pill">
-                  Vaga disponível
-                </em>
-              </div>
-
+                      <em className={!player ? 'waiting-pill' : ''}>
+                        {!player
+                          ? 'Vaga disponível'
+                          : player.is_ready
+                            ? 'Pronto'
+                            : 'Aguardando'}
+                      </em>
+                    </div>
+                  </React.Fragment>
+                );
+              })}
             </div>
 
             <div className="room-code-panel">
@@ -831,19 +1040,57 @@ export default function App() {
               </div>
             </div>
 
-            <button className="start-button" disabled>
-              <LockKeyhole size={17} />
-              Aguardando o segundo jogador
-            </button>
+            {roomStatus === 'waiting' && (
+              <>
+                <button
+                  className="start-button"
+                  onClick={toggleReady}
+                  disabled={loading || members.length === 0}
+                  style={{
+                    background: isReady ? '#397c63' : undefined,
+                    cursor: loading ? 'wait' : 'pointer',
+                  }}
+                >
+                  <Sparkles size={17} />
+                  {loading
+                    ? 'Aguarde...'
+                    : isReady
+                      ? 'Cancelar pronto'
+                      : 'Estou pronto'}
+                </button>
 
-            <p className="lobby-footnote">
-              O início será liberado quando o segundo jogador entrar.
-            </p>
+                {hostId === currentUserId && (
+                  <button
+                    className="submit-button"
+                    onClick={startRoom}
+                    disabled={
+                      loading ||
+                      members.length !== 2 ||
+                      !members.every((member) => member.is_ready)
+                    }
+                  >
+                    <Gamepad2 size={17} />
+                    Iniciar partida
+                  </button>
+                )}
 
-          </div>
+                <p className="lobby-footnote">
+                  {members.length !== 2
+                    ? 'Aguardando o segundo jogador.'
+                    : members.every((member) => member.is_ready)
+                      ? 'Os dois jogadores estão prontos!'
+                      : 'Aguardando os jogadores ficarem prontos.'}
+                </p>
+              </>
+            )}
 
-          <div className="prototype-note">
-            Protótipo local • Multiplayer será conectado ao backend.
+            {roomStatus === 'playing' && (
+              <div className="notice">
+                <Sparkles size={16} />
+                Partida iniciada! O próximo passo será implementar o duelo.
+              </div>
+            )}
+
           </div>
 
         </section>
