@@ -406,18 +406,21 @@ export default function App() {
     setActiveCode(room.code);
 
     const { data: players, error: playersError } = await supabase.rpc(
-      'get_room_members',
-      { p_room_id: activeRoomId }
-    );
+  'get_room_members',
+  { p_room_id: activeRoomId }
+);
 
-    if (playersError) {
-      console.error('Erro ao buscar jogadores:', playersError);
-      return;
-    }
+if (playersError) {
+  console.error('Erro ao buscar jogadores:', playersError.message);
+  return;
+}
 
-    console.log('Jogadores encontrados:', players);
-    console.log('ID da sala:', activeRoomId);
-    console.log('ID do usuário:', currentUserId);
+console.log('Quantidade de jogadores:', players?.length);
+console.log('Jogadores:', players?.map(player => ({
+  nome: player.display_name,
+  pronto: player.is_ready,
+  usuario: player.user_id === currentUserId ? 'Você' : 'Outro jogador'
+})));
 
     setMembers(players || []);
 
