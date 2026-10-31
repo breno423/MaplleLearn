@@ -416,12 +416,18 @@ if (playersError) {
 }
 
 console.log('Quantidade de jogadores:', players?.length);
-console.log('Jogadores:', players?.map(player => ({
-  nome: player.display_name,
-  pronto: player.is_ready,
-  usuario: player.user_id === currentUserId ? 'Você' : 'Outro jogador'
-})));
-
+console.log(
+  'Jogadores:',
+  (players || []).map((player: {
+    display_name: string;
+    is_ready: boolean;
+    user_id: string;
+  }) => ({
+    nome: player.display_name,
+    pronto: player.is_ready,
+    usuario: player.user_id === currentUserId ? 'Você' : 'Outro jogador'
+  }))
+);
     setMembers(players || []);
 
     const myMembership = (players || []).find(
