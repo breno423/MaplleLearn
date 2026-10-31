@@ -415,6 +415,10 @@ export default function App() {
       return;
     }
 
+    console.log('Jogadores encontrados:', players);
+    console.log('ID da sala:', activeRoomId);
+    console.log('ID do usuário:', currentUserId);
+
     setMembers(players || []);
 
     const myMembership = (players || []).find(
