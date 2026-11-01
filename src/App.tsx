@@ -1060,13 +1060,11 @@ export default function App() {
         <section className="workspace profile-workspace">
           <button
             className="back-link"
-            onClick={() => {
-              setScreen('rooms');
-              setProfileNotice('');
-            }}
-          >
+            onClick={leaveRoom}
+            disabled={loading}
+          >   
             <ArrowLeft size={16} />
-            Voltar às salas
+            {loading ? 'Saindo da sala...' : 'Voltar às salas'}
           </button>
 
           <div className="profile-card">
