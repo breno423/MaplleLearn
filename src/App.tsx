@@ -160,6 +160,9 @@ export default function App() {
   const [screen, setScreen] = useState<
     'login' | 'rooms' | 'lobby' | 'profile'
   >('login');
+  const [profileReturnScreen, setProfileReturnScreen] = useState<
+    'rooms' | 'lobby'
+  >('rooms');
   const [profile, setProfile] = useState<{
     display_name: string;
     avatar_url: string | null;
@@ -811,6 +814,12 @@ export default function App() {
                     setProfileFile(null);
                     setProfileNotice('');
                     setProfileMenuOpen(false);
+
+                    // Guarda de onde o usuário abriu o perfil
+                    setProfileReturnScreen(
+                      screen === 'lobby' ? 'lobby' : 'rooms'
+                    );
+
                     setScreen('profile');
                   }}
                 >
@@ -1060,11 +1069,13 @@ export default function App() {
         <section className="workspace profile-workspace">
           <button
             className="back-link"
-            onClick={leaveRoom}
-            disabled={loading}
+            onClick={() => {
+              setScreen(profileReturnScreen);
+              setProfileNotice('');
+            }}
           >
             <ArrowLeft size={16} />
-            {loading ? 'Saindo da sala...' : 'Voltar às salas'}
+            Voltar às salas
           </button>
 
           <div className="profile-card">
