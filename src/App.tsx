@@ -291,85 +291,84 @@ export default function App() {
     let mounted = true;
 
     async function checkSession() {
-  const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await supabase.auth.getSession();
 
-  if (!mounted) return;
+      if (!mounted) return;
 
-  if (error) {
-    setNotice('Não foi possível verificar sua sessão.');
-    return;
-  }
+      if (error) {
+        setNotice('Não foi possível verificar sua sessão.');
+        return;
+      }
 
-  if (!data.session) return;
+      if (!data.session) return;
 
-  const user = data.session.user;
+      const user = data.session.user;
 
-  setCurrentUserId(user.id);
-  await loadUserProfile(user);
+      setCurrentUserId(user.id);
+      await loadUserProfile(user);
 
-  if (!mounted) return;
+      if (!mounted) return;
 
-  // Verifica se o usuário ainda pertence a uma sala.
-  const { data: membership, error: membershipError } = await supabase
-    .from('room_members')
-    .select('room_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
+      // Verifica se o usuário ainda pertence a uma sala.
+      const { data: membership, error: membershipError } = await supabase
+        .from('room_members')
+        .select('room_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-  if (!mounted) return;
+      if (!mounted) return;
 
-  if (membershipError) {
-    console.error('Erro ao recuperar sala:', membershipError);
-    setScreen('rooms');
-    return;
-  }
+      if (membershipError) {
+        console.error('Erro ao recuperar sala:', membershipError);
+        setScreen('rooms');
+        return;
+      }
 
-  if (membership?.room_id) {
-    const { data: room, error: roomError } = await supabase
-      .from('rooms')
-      .select('id, code, status, host_id')
-      .eq('id', membership.room_id)
-      .maybeSingle();
+      if (membership?.room_id) {
+        const { data: room, error: roomError } = await supabase
+          .from('rooms')
+          .select('id, code, status, host_id')
+          .eq('id', membership.room_id)
+          .maybeSingle();
 
-    if (!mounted) return;
+        if (!mounted) return;
 
-    if (!roomError && room && room.status !== 'finished') {
-      setActiveRoomId(room.id);
-      setActiveCode(room.code);
-      setHostId(room.host_id);
-      setRoomStatus(room.status);
-      setScreen(room.status === 'waiting' ? 'lobby' : 'rooms');
+        if (!roomError && room && room.status !== 'finished') {
+          setActiveRoomId(room.id);
+          setActiveCode(room.code);
+          setHostId(room.host_id);
+          setRoomStatus(room.status);
+          setScreen(room.status === 'waiting' ? 'lobby' : 'rooms');
 
-      return;
+          return;
+        }
+      }
+
+      setScreen('rooms');
     }
-  }
-
-  setScreen('rooms');
-}
 
 
     checkSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event) => {
       if (!mounted) return;
-
-      if (event === 'SIGNED_IN' && session) {
-        setCurrentUserId(session.user.id);
-        setScreen('rooms');
-        void loadUserProfile(session.user);
-        setNotice('');
-      }
 
       if (event === 'SIGNED_OUT') {
         setCurrentUserId('');
         setActiveRoomId('');
         setActiveCode('');
+        setHostId('');
         setMembers([]);
         setIsReady(false);
         setRoomStatus('waiting');
-        setProfile({ display_name: 'Jogador', avatar_url: null });
+
+        setProfile({
+          display_name: 'Jogador',
+          avatar_url: null,
+        });
+
         setProfileName('Jogador');
         setProfileMenuOpen(false);
         setScreen('login');
@@ -679,7 +678,8 @@ export default function App() {
 
       if (error) throw error;
 
-      await refreshLobby();
+      setRoomStatus('playing');
+      await refreshLobby(activeRoomId);
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : 'Não foi possível iniciar a partida.'
