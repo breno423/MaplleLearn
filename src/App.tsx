@@ -1062,7 +1062,7 @@ export default function App() {
             className="back-link"
             onClick={leaveRoom}
             disabled={loading}
-          >   
+          >
             <ArrowLeft size={16} />
             {loading ? 'Saindo da sala...' : 'Voltar às salas'}
           </button>
@@ -1253,13 +1253,11 @@ export default function App() {
 
           <button
             className="back-link"
-            onClick={() => {
-              setScreen('rooms');
-              setNotice('');
-            }}
+            onClick={leaveRoom}
+            disabled={loading}
           >
             <ArrowLeft size={16} />
-            Voltar às salas
+            {loading ? 'Saindo da sala...' : 'Sair da sala'}
           </button>
 
           <div className="lobby-title">
