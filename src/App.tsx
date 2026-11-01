@@ -179,6 +179,11 @@ export default function App() {
 
   const [roomCode, setRoomCode] = useState('');
   const [activeCode, setActiveCode] = useState('');
+  const [activeMatchId, setActiveMatchId] = useState('');
+  const [matchLanguage, setMatchLanguage] = useState<'fr' | 'en' | null>(null);
+  const [opponentLanguage, setOpponentLanguage] = useState<'fr' | 'en' | null>(null);
+  const [languagesReady, setLanguagesReady] = useState(false);
+  const [languageLoading, setLanguageLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
@@ -288,6 +293,91 @@ export default function App() {
     }, 2000);
 
     return () => clearInterval(interval);
+  }, [screen, activeRoomId, currentUserId]);
+
+  useEffect(() => {
+    if (screen !== 'match' || !activeRoomId || !currentUserId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    type MatchData = {
+      id: string;
+      player_one_id: string;
+      player_two_id: string;
+      player_one_language: 'fr' | 'en' | null;
+      player_two_language: 'fr' | 'en' | null;
+    };
+
+    const updateMatchState = (match: MatchData) => {
+      if (cancelled) return;
+
+      setActiveMatchId(match.id);
+
+      const isPlayerOne = match.player_one_id === currentUserId;
+
+      const ownLanguage = isPlayerOne
+        ? match.player_one_language
+        : match.player_two_language;
+
+      const otherLanguage = isPlayerOne
+        ? match.player_two_language
+        : match.player_one_language;
+
+      setMatchLanguage(ownLanguage);
+      setOpponentLanguage(otherLanguage);
+
+      setLanguagesReady(
+        Boolean(match.player_one_language && match.player_two_language)
+      );
+    };
+
+    const loadMatch = async () => {
+      const { data, error } = await supabase
+        .from('matches')
+        .select(`
+        id,
+        player_one_id,
+        player_two_id,
+        player_one_language,
+        player_two_language
+      `)
+        .eq('room_id', activeRoomId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao carregar partida:', error);
+        return;
+      }
+
+      if (data) {
+        updateMatchState(data as MatchData);
+      }
+    };
+
+    loadMatch();
+
+    const channel = supabase
+      .channel(`match-${activeRoomId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'matches',
+          filter: `room_id=eq.${activeRoomId}`,
+        },
+        (payload) => {
+          updateMatchState(payload.new as MatchData);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, [screen, activeRoomId, currentUserId]);
 
   useEffect(() => {
@@ -697,22 +787,33 @@ export default function App() {
   async function startRoom() {
     if (!activeRoomId) return;
 
+    console.log('Iniciando partida:', activeRoomId);
+
     setLoading(true);
     setNotice('');
 
     try {
-      const { error } = await supabase.rpc('start_room', {
+      const { data, error } = await supabase.rpc('start_room', {
         p_room_id: activeRoomId,
       });
 
+      console.log('Resultado start_room:', { data, error });
+
       if (error) throw error;
 
+      if (!data?.match_id) {
+        throw new Error('A partida foi iniciada, mas não recebemos seu ID.');
+      }
+
+      setActiveMatchId(data.match_id);
       setRoomStatus('playing');
       setScreen('match');
 
-      await refreshLobby(activeRoomId);
+      console.log('Tela alterada para match');
 
     } catch (error) {
+      console.error('Erro ao iniciar partida:', error);
+
       setNotice(
         error instanceof Error
           ? error.message
@@ -722,7 +823,6 @@ export default function App() {
       setLoading(false);
     }
   }
-
   async function leaveRoom() {
     if (!activeRoomId) return;
 
@@ -749,6 +849,41 @@ export default function App() {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function chooseMatchLanguage(language: 'fr' | 'en') {
+    if (!activeMatchId || languageLoading) return;
+
+    setLanguageLoading(true);
+    setNotice('');
+
+    try {
+      const { data, error } = await supabase.rpc(
+        'choose_match_language',
+        {
+          p_match_id: activeMatchId,
+          p_language: language,
+        }
+      );
+
+      if (error) throw error;
+
+      setMatchLanguage(language);
+
+      setLanguagesReady(Boolean(data?.both_selected));
+
+      console.log('Idioma selecionado:', data);
+    } catch (error) {
+      console.error('Erro ao escolher idioma:', error);
+
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível salvar seu idioma.'
+      );
+    } finally {
+      setLanguageLoading(false);
     }
   }
 
@@ -1561,23 +1696,80 @@ export default function App() {
             <div className="match-challenge">
               <div className="eyebrow">
                 <Sparkles size={15} />
-                PRIMEIRO DESAFIO
+                CONFIGURAÇÃO DO DUELO
               </div>
 
-              <h2>Prepare-se para jogar!</h2>
+              <h2>Qual idioma você quer praticar?</h2>
 
               <p>
-                Em breve, Maplle apresentará a primeira frase
-                para você traduzir.
+                Escolha seu idioma. Seu adversário poderá escolher
+                francês ou inglês independentemente da sua escolha.
               </p>
+
+              <div className="language-options">
+                <button
+                  type="button"
+                  className={`language-option ${matchLanguage === 'en' ? 'selected' : ''}`}
+                  onClick={() => chooseMatchLanguage('en')}
+                  disabled={languageLoading || languagesReady}
+                >
+                  <span>🇬🇧</span>
+                  <strong>Inglês</strong>
+                  <small>English</small>
+                </button>
+
+                <button
+                  type="button"
+                  className={`language-option ${matchLanguage === 'fr' ? 'selected' : ''}`}
+                  onClick={() => chooseMatchLanguage('fr')}
+                  disabled={languageLoading || languagesReady}
+                >
+                  <span>🇫🇷</span>
+                  <strong>Francês</strong>
+                  <small>Français</small>
+                </button>
+              </div>
+
+              {languageLoading && (
+                <p>Salvando sua escolha...</p>
+              )}
+
+              {matchLanguage && (
+                <p className="language-status">
+                  Seu idioma: {matchLanguage === 'fr' ? '🇫🇷 Francês' : '🇬🇧 Inglês'}
+                </p>
+              )}
+
+              {matchLanguage && !opponentLanguage && (
+                <div className="match-waiting">
+                  <span className="waiting-indicator" />
+                  Aguardando seu adversário escolher o idioma...
+                </div>
+              )}
+
+              {opponentLanguage && (
+                <div className="match-opponent-language">
+                  Adversário escolheu:
+                  <strong>
+                    {opponentLanguage === 'fr' ? ' 🇫🇷 Francês' : ' 🇬🇧 Inglês'}
+                  </strong>
+                </div>
+              )}
+
+              {languagesReady && (
+                <div className="match-ready">
+                  <h3>Os dois jogadores estão prontos!</h3>
+                  <p>Maplle está preparando o primeiro desafio.</p>
+                </div>
+              )}
 
               <div className="match-mascot">
                 <Maplle />
               </div>
 
-              <span className="match-coming-soon">
-                MECÂNICA DE JOGO EM DESENVOLVIMENTO
-              </span>
+              {notice && (
+                <p className="error-message">{notice}</p>
+              )}
             </div>
           </div>
         </section>
