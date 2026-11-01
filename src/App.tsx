@@ -16,6 +16,11 @@ import {
   Gamepad2,
   UserRound,
   Github,
+  Camera,
+  ChevronDown,
+  LogOut,
+  Save,
+  X,
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import './App.css';
@@ -153,8 +158,21 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [screen, setScreen] = useState<
-    'login' | 'rooms' | 'lobby'
+    'login' | 'rooms' | 'lobby' | 'profile'
   >('login');
+  const [profile, setProfile] = useState<{
+    display_name: string;
+    avatar_url: string | null;
+  }>({
+    display_name: 'Jogador',
+    avatar_url: null,
+  });
+
+  const [profileName, setProfileName] = useState('Jogador');
+  const [profileFile, setProfileFile] = useState<File | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileNotice, setProfileNotice] = useState('');
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   const [roomCode, setRoomCode] = useState('');
   const [activeCode, setActiveCode] = useState('');
@@ -168,24 +186,106 @@ export default function App() {
       display_name: string;
       is_ready: boolean;
       joined_at: string;
+      avatar_url: string | null;
     }[]
   >([]);
   const [roomStatus, setRoomStatus] = useState<'waiting' | 'playing' | 'finished'>('waiting');
   const [isReady, setIsReady] = useState(false);
 
-  useEffect(() => {
-  if (screen !== 'lobby' || !activeRoomId || !currentUserId) {
-    return;
+  async function loadUserProfile(user: {
+    id: string;
+    email?: string;
+    user_metadata?: Record<string, any>;
+  }) {
+
+    const metadata = user.user_metadata ?? {};
+
+    const providerName = String(
+      metadata.full_name ??
+      metadata.name ??
+      metadata.user_name ??
+      metadata.preferred_username ??
+      ''
+    ).trim();
+
+    const providerAvatar = String(
+      metadata.avatar_url ??
+      metadata.picture ??
+      metadata.avatar ??
+      ''
+    ).trim();
+
+    const { data: existing, error } = await supabase
+      .from('profiles')
+      .select('display_name, avatar_url')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      setNotice('Não foi possível carregar seu perfil.');
+      return;
+    }
+
+    if (!existing) {
+      const initialProfile = {
+        id: user.id,
+        display_name: providerName || 'Jogador',
+        avatar_url: providerAvatar || null,
+      };
+
+      const { error: insertError } = await supabase
+        .from('profiles')
+        .insert(initialProfile);
+
+      if (insertError) {
+        setNotice('Não foi possível criar seu perfil.');
+        return;
+      }
+
+      setProfile({
+        display_name: initialProfile.display_name,
+        avatar_url: initialProfile.avatar_url,
+      });
+
+      setProfileName(initialProfile.display_name);
+      return;
+    }
+
+    const currentProfile = {
+      display_name: existing.display_name || providerName || 'Jogador',
+      avatar_url: existing.avatar_url || providerAvatar || null,
+    };
+
+    // Preenche dados ausentes, mas preserva personalizações existentes.
+    if (!existing.display_name || (!existing.avatar_url && providerAvatar)) {
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update(currentProfile)
+        .eq('id', user.id);
+
+      if (updateError) {
+        setNotice('Não foi possível atualizar seu perfil.');
+        return;
+      }
+    }
+
+    setProfile(currentProfile);
+    setProfileName(currentProfile.display_name);
   }
 
-  refreshLobby(activeRoomId);
+  useEffect(() => {
+    if (screen !== 'lobby' || !activeRoomId || !currentUserId) {
+      return;
+    }
 
-  const interval = setInterval(() => {
     refreshLobby(activeRoomId);
-  }, 2000);
 
-  return () => clearInterval(interval);
-}, [screen, activeRoomId, currentUserId]);
+    const interval = setInterval(() => {
+      refreshLobby(activeRoomId);
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [screen, activeRoomId, currentUserId]);
 
   useEffect(() => {
     let mounted = true;
@@ -203,6 +303,7 @@ export default function App() {
       if (data.session) {
         setCurrentUserId(data.session.user.id);
         setScreen('rooms');
+        await loadUserProfile(data.session.user);
       }
     }
 
@@ -217,6 +318,7 @@ export default function App() {
       if (event === 'SIGNED_IN' && session) {
         setCurrentUserId(session.user.id);
         setScreen('rooms');
+        void loadUserProfile(session.user);
         setNotice('');
       }
 
@@ -227,6 +329,9 @@ export default function App() {
         setMembers([]);
         setIsReady(false);
         setRoomStatus('waiting');
+        setProfile({ display_name: 'Jogador', avatar_url: null });
+        setProfileName('Jogador');
+        setProfileMenuOpen(false);
         setScreen('login');
         setMode('login');
       }
@@ -328,6 +433,94 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  async function saveProfile() {
+    if (!currentUserId) return;
+
+    const trimmedName = profileName.trim();
+
+    if (!trimmedName) {
+      setProfileNotice('Digite um nome para continuar.');
+      return;
+    }
+
+    if (trimmedName.length > 30) {
+      setProfileNotice('O nome deve ter no máximo 30 caracteres.');
+      return;
+    }
+
+    if (profileFile && !profileFile.type.startsWith('image/')) {
+      setProfileNotice('Selecione um arquivo de imagem válido.');
+      return;
+    }
+
+    if (profileFile && profileFile.size > 5 * 1024 * 1024) {
+      setProfileNotice('A imagem deve ter no máximo 5 MB.');
+      return;
+    }
+
+    setProfileSaving(true);
+    setProfileNotice('');
+
+    try {
+      let avatarUrl = profile.avatar_url;
+
+      if (profileFile) {
+        const extension = profileFile.name.split('.').pop() || 'jpg';
+        const filePath = `${currentUserId}/${Date.now()}.${extension}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, profileFile, {
+            upsert: true,
+            contentType: profileFile.type,
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        avatarUrl = data.publicUrl;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          display_name: trimmedName,
+          avatar_url: avatarUrl,
+        })
+        .eq('id', currentUserId);
+
+      if (error) throw error;
+
+      setProfile({
+        display_name: trimmedName,
+        avatar_url: avatarUrl,
+      });
+
+      setProfileFile(null);
+      setProfileNotice('Perfil atualizado com sucesso!');
+    } catch (error) {
+      setProfileNotice(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível salvar seu perfil.'
+      );
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function handleSignOut() {
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      setNotice('Não foi possível sair da conta.');
+    }
+  }
+
   async function createRoom() {
     setLoading(true);
     setNotice('');
@@ -390,48 +583,48 @@ export default function App() {
   }
 
   async function refreshLobby(roomId?: string) {
-  const targetRoomId = roomId || activeRoomId;
+    const targetRoomId = roomId || activeRoomId;
 
-  if (!targetRoomId) return;
+    if (!targetRoomId) return;
 
-  const { data: players, error } = await supabase.rpc(
-    'get_room_members',
-    { p_room_id: targetRoomId }
-  );
+    const { data: players, error } = await supabase.rpc(
+      'get_room_members',
+      { p_room_id: targetRoomId }
+    );
 
-  if (error) {
-    console.error('Erro ao carregar jogadores:', error.message);
-    return;
+    if (error) {
+      console.error('Erro ao carregar jogadores:', error.message);
+      return;
+    }
+
+    setMembers(players || []);
+
+    const myMembership = (players || []).find(
+      (player: {
+        user_id: string;
+        is_ready: boolean;
+      }) => player.user_id === currentUserId
+    );
+
+    setIsReady(myMembership?.is_ready ?? false);
   }
 
-  setMembers(players || []);
+  async function toggleReady() {
+    if (!activeRoomId) return;
 
-  const myMembership = (players || []).find(
-    (player: {
-      user_id: string;
-      is_ready: boolean;
-    }) => player.user_id === currentUserId
-  );
+    const { error } = await supabase.rpc('set_room_ready', {
+      p_room_id: activeRoomId,
+      p_is_ready: !isReady,
+    });
 
-  setIsReady(myMembership?.is_ready ?? false);
-}
+    if (error) {
+      console.error('Erro ao definir pronto:', error.message);
+      setNotice(error.message);
+      return;
+    }
 
-async function toggleReady() {
-  if (!activeRoomId) return;
-
-  const { error } = await supabase.rpc('set_room_ready', {
-    p_room_id: activeRoomId,
-    p_is_ready: !isReady,
-  });
-
-  if (error) {
-    console.error('Erro ao definir pronto:', error.message);
-    setNotice(error.message);
-    return;
+    await refreshLobby(activeRoomId);
   }
-
-  await refreshLobby(activeRoomId);
-}
 
   async function startRoom() {
     if (!activeRoomId) return;
@@ -528,6 +721,8 @@ async function toggleReady() {
       setNotice(message);
       setLoading(false);
     }
+
+
   }
 
   return (
@@ -545,9 +740,58 @@ async function toggleReady() {
             French<span className="brand-accent">OS</span>
           </span>
         </a>
-        <div className="topbar-note">
-          <i /> SUA PRÓXIMA FASE COMEÇA AQUI
-        </div>
+        {currentUserId && screen !== 'login' && (
+          <div className="profile-menu-container">
+            <button
+              className="profile-trigger"
+              onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+              type="button"
+            >
+              {profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="Foto de perfil" />
+              ) : (
+                <UserRound size={20} />
+              )}
+
+              <span>{profile.display_name || 'Jogador'}</span>
+              <ChevronDown size={16} />
+            </button>
+
+            {profileMenuOpen && (
+              <div className="profile-dropdown">
+                <div className="profile-dropdown-info">
+                  <strong>{profile.display_name || 'Jogador'}</strong>
+                  <span>Minha conta</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileName(profile.display_name);
+                    setProfileFile(null);
+                    setProfileNotice('');
+                    setProfileMenuOpen(false);
+                    setScreen('profile');
+                  }}
+                >
+                  <UserRound size={17} />
+                  Meu perfil
+                </button>
+
+                <button type="button" onClick={handleSignOut}>
+                  <LogOut size={17} />
+                  Sair da conta
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {screen === 'login' && (
+          <div className="topbar-note">
+            <i /> SUA PRÓXIMA FASE COMEÇA AQUI
+          </div>
+        )}
       </header>
 
       {/* Seção Principal */}
@@ -772,6 +1016,87 @@ async function toggleReady() {
         </section>
       )}
 
+      {screen === 'profile' && (
+        <section className="workspace profile-workspace">
+          <button
+            className="back-link"
+            onClick={() => {
+              setScreen('rooms');
+              setProfileNotice('');
+            }}
+          >
+            <ArrowLeft size={16} />
+            Voltar às salas
+          </button>
+
+          <div className="profile-card">
+            <div className="eyebrow">
+              <UserRound size={16} />
+              SUA CONTA
+            </div>
+
+            <h1>Meu <span>perfil.</span></h1>
+
+            <p className="intro-copy">
+              Personalize sua identidade no Maplle Learn.
+            </p>
+
+            <div className="profile-avatar-editor">
+              {profileFile ? (
+                <img
+                  src={URL.createObjectURL(profileFile)}
+                  alt="Prévia da nova foto"
+                />
+              ) : profile.avatar_url ? (
+                <img src={profile.avatar_url} alt="Foto atual" />
+              ) : (
+                <UserRound size={48} />
+              )}
+
+              <label className="avatar-upload-button">
+                <Camera size={17} />
+                Alterar foto
+
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={(e) =>
+                    setProfileFile(e.target.files?.[0] || null)
+                  }
+                  hidden
+                />
+              </label>
+            </div>
+
+            <div className="profile-field">
+              <label htmlFor="profile-name">Nome de usuário</label>
+              <input
+                id="profile-name"
+                value={profileName}
+                maxLength={30}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="Digite seu nome"
+              />
+            </div>
+
+            <button
+              className="submit-button"
+              onClick={saveProfile}
+              disabled={profileSaving}
+            >
+              <Save size={17} />
+              {profileSaving ? 'Salvando...' : 'Salvar alterações'}
+            </button>
+
+            {profileNotice && (
+              <div className="notice" role="status">
+                {profileNotice}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {screen === 'rooms' && (
         <section className="workspace">
 
@@ -950,7 +1275,13 @@ async function toggleReady() {
                       className={`player-slot ${player?.is_ready ? 'player-ready' : ''}`}
                     >
                       <div className={`avatar-circle ${!player ? 'empty-avatar' : ''}`}>
-                        {isHost ? (
+                        {player?.avatar_url ? (
+                          <img
+                            src={player.avatar_url}
+                            alt={`Foto de ${player.display_name}`}
+                            className="player-avatar-image"
+                          />
+                        ) : isHost ? (
                           <Crown size={29} />
                         ) : (
                           <UserRound size={27} />
