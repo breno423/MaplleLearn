@@ -158,10 +158,10 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [screen, setScreen] = useState<
-    'login' | 'rooms' | 'lobby' | 'profile'
+    'login' | 'rooms' | 'lobby' | 'profile' | 'match'
   >('login');
   const [profileReturnScreen, setProfileReturnScreen] = useState<
-    'rooms' | 'lobby'
+    'rooms' | 'lobby' | 'match'
   >('rooms');
   const [profile, setProfile] = useState<{
     display_name: string;
@@ -341,7 +341,12 @@ export default function App() {
           setActiveCode(room.code);
           setHostId(room.host_id);
           setRoomStatus(room.status);
-          setScreen(room.status === 'waiting' ? 'lobby' : 'rooms');
+
+          setScreen(
+            room.status === 'playing'
+              ? 'match'
+              : 'lobby'
+          );
 
           return;
         }
@@ -629,6 +634,7 @@ export default function App() {
 
     if (!targetRoomId) return;
 
+    // Atualiza os jogadores
     const { data: players, error } = await supabase.rpc(
       'get_room_members',
       { p_room_id: targetRoomId }
@@ -649,6 +655,26 @@ export default function App() {
     );
 
     setIsReady(myMembership?.is_ready ?? false);
+
+    // Consulta o status atual da sala
+    const { data: room, error: roomError } = await supabase
+      .from('rooms')
+      .select('status')
+      .eq('id', targetRoomId)
+      .maybeSingle();
+
+    if (roomError) {
+      console.error('Erro ao consultar status da sala:', roomError.message);
+      return;
+    }
+
+    if (room) {
+      setRoomStatus(room.status);
+
+      if (room.status === 'playing') {
+        setScreen('match');
+      }
+    }
   }
 
   async function toggleReady() {
@@ -682,10 +708,15 @@ export default function App() {
       if (error) throw error;
 
       setRoomStatus('playing');
+      setScreen('match');
+
       await refreshLobby(activeRoomId);
+
     } catch (error) {
       setNotice(
-        error instanceof Error ? error.message : 'Não foi possível iniciar a partida.'
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível iniciar a partida.'
       );
     } finally {
       setLoading(false);
@@ -817,7 +848,11 @@ export default function App() {
 
                     // Guarda de onde o usuário abriu o perfil
                     setProfileReturnScreen(
-                      screen === 'lobby' ? 'lobby' : 'rooms'
+                      screen === 'match'
+                        ? 'match'
+                        : screen === 'lobby'
+                          ? 'lobby'
+                          : 'rooms'
                     );
 
                     setScreen('profile');
@@ -1075,7 +1110,11 @@ export default function App() {
             }}
           >
             <ArrowLeft size={16} />
-            Voltar às salas
+            {profileReturnScreen === 'match'
+              ? 'Voltar à partida'
+              : profileReturnScreen === 'lobby'
+                ? 'Voltar à sala'
+                : 'Voltar às salas'}
           </button>
 
           <div className="profile-card">
@@ -1454,6 +1493,93 @@ export default function App() {
 
           </div>
 
+        </section>
+      )}
+
+      {screen === 'match' && (
+        <section className="workspace match-workspace">
+          <div className="match-header">
+            <div className="eyebrow">
+              <Gamepad2 size={15} />
+              PARTIDA EM ANDAMENTO
+            </div>
+
+            <h1>
+              Hora do <span>desafio!</span>
+            </h1>
+
+            <p className="intro-copy">
+              Mostre o que você sabe e conquiste seus pontos.
+            </p>
+          </div>
+
+          <div className="match-card">
+            <div className="match-player-info">
+              <div className="match-player">
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt="Seu avatar" />
+                ) : (
+                  <UserRound size={24} />
+                )}
+
+                <div>
+                  <strong>{profile.display_name}</strong>
+                  <span>Você</span>
+                </div>
+              </div>
+
+              <div className="match-score">
+                <span>PONTOS</span>
+                <strong>0</strong>
+              </div>
+            </div>
+
+            <div className="match-divider">
+              <span>VS</span>
+            </div>
+
+            <div className="match-player-info">
+              <div className="match-player">
+                <UserRound size={24} />
+
+                <div>
+                  <strong>
+                    {members.find(
+                      (member) => member.user_id !== currentUserId
+                    )?.display_name || 'Adversário'}
+                  </strong>
+                  <span>Seu adversário</span>
+                </div>
+              </div>
+
+              <div className="match-score">
+                <span>PONTOS</span>
+                <strong>0</strong>
+              </div>
+            </div>
+
+            <div className="match-challenge">
+              <div className="eyebrow">
+                <Sparkles size={15} />
+                PRIMEIRO DESAFIO
+              </div>
+
+              <h2>Prepare-se para jogar!</h2>
+
+              <p>
+                Em breve, Maplle apresentará a primeira frase
+                para você traduzir.
+              </p>
+
+              <div className="match-mascot">
+                <Maplle />
+              </div>
+
+              <span className="match-coming-soon">
+                MECÂNICA DE JOGO EM DESENVOLVIMENTO
+              </span>
+            </div>
+          </div>
         </section>
       )}
 
