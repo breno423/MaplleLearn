@@ -206,6 +206,8 @@ export default function App() {
   const [userAnswer, setUserAnswer] = useState('');
   const [roundLoading, setRoundLoading] = useState(false);
   const [answerLoading, setAnswerLoading] = useState(false);
+  const [myScore, setMyScore] = useState(0);
+  const [opponentScore, setOpponentScore] = useState(0);
 
   const [roundEvaluation, setRoundEvaluation] = useState<{
     is_correct: boolean;
@@ -514,8 +516,73 @@ export default function App() {
       window.removeEventListener('pageshow', resetLoading);
       window.removeEventListener('focus', resetLoading);
       document.removeEventListener('visibilitychange', resetLoading);
-    };
-  }, []);
+     };
+    }, []);
+
+    useEffect(() => {
+  if (screen !== 'match' || !activeMatchId || !currentUserId) return;
+
+  let cancelled = false;
+
+  async function loadScores() {
+    const { data, error } = await supabase
+      .from('match_answers')
+      .select(`
+        player_id,
+        score,
+        match_rounds!inner (
+          match_id
+        )
+      `)
+      .eq('match_rounds.match_id', activeMatchId);
+
+    if (error) {
+      console.error('Erro ao carregar pontuação:', error);
+      return;
+    }
+
+    if (cancelled || !data) return;
+
+    let ownTotal = 0;
+    let opponentTotal = 0;
+
+    data.forEach((answer) => {
+      if (answer.player_id === currentUserId) {
+        ownTotal += answer.score;
+      } else {
+        opponentTotal += answer.score;
+      }
+    });
+
+    setMyScore(ownTotal);
+    setOpponentScore(opponentTotal);
+  }
+
+  loadScores();
+
+  // Quando a partida for atualizada após uma resposta,
+  // buscamos novamente a pontuação dos dois jogadores.
+  const channel = supabase
+    .channel(`match-scores-${activeMatchId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'matches',
+        filter: `id=eq.${activeMatchId}`,
+      },
+      () => {
+        loadScores();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    cancelled = true;
+    supabase.removeChannel(channel);
+   };
+  }, [screen, activeMatchId, currentUserId]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -1789,7 +1856,7 @@ export default function App() {
 
               <div className="match-score">
                 <span>PONTOS</span>
-                <strong>0</strong>
+                <strong>{myScore}</strong>
               </div>
             </div>
 
@@ -1813,7 +1880,7 @@ export default function App() {
 
               <div className="match-score">
                 <span>PONTOS</span>
-                <strong>0</strong>
+                <strong>{opponentScore}</strong>
               </div>
             </div>
 
