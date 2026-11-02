@@ -187,6 +187,8 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [activeRoomId, setActiveRoomId] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
+  const [currentPlayerId, setCurrentPlayerId] = useState('');
+  const isMyTurn = currentPlayerId === currentUserId;
   const [hostId, setHostId] = useState('');
   const [members, setMembers] = useState<
     {
@@ -317,6 +319,16 @@ export default function App() {
   }, [screen, activeRoomId, currentUserId]);
 
   useEffect(() => {
+    if (!isMyTurn || !roundEvaluation) return;
+
+    setActiveRoundId('');
+    setOriginalText('');
+    setUserAnswer('');
+    setRoundEvaluation(null);
+    setMatchFinished(false);
+  }, [isMyTurn, roundEvaluation]);
+
+  useEffect(() => {
     if (screen !== 'match' || !activeRoomId || !currentUserId) {
       return;
     }
@@ -327,6 +339,7 @@ export default function App() {
       id: string;
       player_one_id: string;
       player_two_id: string;
+      current_player_id: string;
       player_one_language: 'fr' | 'en' | null;
       player_two_language: 'fr' | 'en' | null;
     };
@@ -335,6 +348,7 @@ export default function App() {
       if (cancelled) return;
 
       setActiveMatchId(match.id);
+      setCurrentPlayerId(match.current_player_id);
 
       const isPlayerOne = match.player_one_id === currentUserId;
 
@@ -362,7 +376,8 @@ export default function App() {
         player_one_id,
         player_two_id,
         player_one_language,
-        player_two_language
+        player_two_language,
+        current_player_id
       `)
         .eq('room_id', activeRoomId)
         .maybeSingle();
@@ -516,72 +531,72 @@ export default function App() {
       window.removeEventListener('pageshow', resetLoading);
       window.removeEventListener('focus', resetLoading);
       document.removeEventListener('visibilitychange', resetLoading);
-     };
-    }, []);
+    };
+  }, []);
 
-    useEffect(() => {
-  if (screen !== 'match' || !activeMatchId || !currentUserId) return;
+  useEffect(() => {
+    if (screen !== 'match' || !activeMatchId || !currentUserId) return;
 
-  let cancelled = false;
+    let cancelled = false;
 
-  async function loadScores() {
-    const { data, error } = await supabase
-      .from('match_answers')
-      .select(`
+    async function loadScores() {
+      const { data, error } = await supabase
+        .from('match_answers')
+        .select(`
         player_id,
         score,
         match_rounds!inner (
           match_id
         )
       `)
-      .eq('match_rounds.match_id', activeMatchId);
+        .eq('match_rounds.match_id', activeMatchId);
 
-    if (error) {
-      console.error('Erro ao carregar pontuação:', error);
-      return;
+      if (error) {
+        console.error('Erro ao carregar pontuação:', error);
+        return;
+      }
+
+      if (cancelled || !data) return;
+
+      let ownTotal = 0;
+      let opponentTotal = 0;
+
+      data.forEach((answer) => {
+        if (answer.player_id === currentUserId) {
+          ownTotal += answer.score;
+        } else {
+          opponentTotal += answer.score;
+        }
+      });
+
+      setMyScore(ownTotal);
+      setOpponentScore(opponentTotal);
     }
 
-    if (cancelled || !data) return;
+    loadScores();
 
-    let ownTotal = 0;
-    let opponentTotal = 0;
+    // Quando a partida for atualizada após uma resposta,
+    // buscamos novamente a pontuação dos dois jogadores.
+    const channel = supabase
+      .channel(`match-scores-${activeMatchId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'matches',
+          filter: `id=eq.${activeMatchId}`,
+        },
+        () => {
+          loadScores();
+        }
+      )
+      .subscribe();
 
-    data.forEach((answer) => {
-      if (answer.player_id === currentUserId) {
-        ownTotal += answer.score;
-      } else {
-        opponentTotal += answer.score;
-      }
-    });
-
-    setMyScore(ownTotal);
-    setOpponentScore(opponentTotal);
-  }
-
-  loadScores();
-
-  // Quando a partida for atualizada após uma resposta,
-  // buscamos novamente a pontuação dos dois jogadores.
-  const channel = supabase
-    .channel(`match-scores-${activeMatchId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'matches',
-        filter: `id=eq.${activeMatchId}`,
-      },
-      () => {
-        loadScores();
-      }
-    )
-    .subscribe();
-
-  return () => {
-    cancelled = true;
-    supabase.removeChannel(channel);
-   };
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
   }, [screen, activeMatchId, currentUserId]);
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -1964,23 +1979,37 @@ export default function App() {
 
                   {!activeRoundId && (
                     <>
-                      <h2>Prepare-se para jogar!</h2>
+                      {isMyTurn ? (
+                        <>
+                          <h2>É sua vez de jogar! 🎯</h2>
 
-                      <p>
-                        Seu idioma: {matchLanguage === 'fr' ? '🇫🇷 Francês' : '🇬🇧 Inglês'}
-                      </p>
+                          <p>
+                            Maplle está preparando seu próximo desafio.
+                            Prepare-se para traduzir!
+                          </p>
 
-                      <button
-                        type="button"
-                        className="match-action-button"
-                        onClick={generateRound}
-                        disabled={roundLoading}
-                      >
-                        {roundLoading ? 'Preparando desafio...' : 'Começar desafio'}
-                      </button>
+                          <button
+                            type="button"
+                            className="match-action-button"
+                            onClick={generateRound}
+                            disabled={roundLoading}
+                          >
+                            {roundLoading ? 'Preparando desafio...' : 'Começar desafio'}
+                          </button>
+                        </>
+                      ) : (
+                        <div className="match-waiting">
+                          <span className="waiting-indicator" />
+
+                          <h2>Vez do adversário!</h2>
+
+                          <p>
+                            Aguarde enquanto seu adversário responde.
+                            Assim que ele terminar, será sua vez novamente.
+                          </p>
+                        </div>
+                      )}
                     </>
-
-
                   )}
 
                   {activeRoundId && (
