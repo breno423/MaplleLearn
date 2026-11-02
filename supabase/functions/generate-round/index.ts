@@ -112,26 +112,121 @@ const languageName =
 
 const difficulty = match.current_difficulty;
 
+// Recupera as últimas frases para evitar repetições na partida.
+const { data: previousRounds, error: historyError } = await ctx.supabase
+  .from("match_rounds")
+  .select("original_text")
+  .eq("match_id", match_id)
+  .order("round_number", { ascending: false })
+  .limit(8);
+
+if (historyError) {
+  console.error("Erro ao consultar histórico:", historyError);
+}
+
+const recentPhrases = (previousRounds ?? [])
+  .map((round) => round.original_text)
+  .filter(Boolean);
+
+// Temas possíveis para diversificar os desafios.
+const topics = [
+  "tecnologia, inteligência artificial e inovação",
+  "trabalho, carreira e ambiente profissional",
+  "faculdade, estudos e desenvolvimento pessoal",
+  "viagens, turismo e experiências culturais",
+  "amizade, relacionamentos e situações sociais",
+  "esportes, saúde e qualidade de vida",
+  "negócios, dinheiro e empreendedorismo",
+  "cinema, música, livros e entretenimento",
+  "meio ambiente e sustentabilidade",
+  "problemas cotidianos e tomada de decisões",
+  "planos para o futuro e experiências passadas",
+  "opiniões, debates e situações hipotéticas",
+  "restaurantes, alimentação e vida cotidiana",
+  "internet, redes sociais e comunicação",
+];
+
+const selectedTopic = topics[
+  Math.floor(Math.random() * topics.length)
+];
+
+const difficultyInstructions = {
+  beginner: `
+- Use vocabulário frequente e estruturas fundamentais.
+- Explore presente simples, perguntas básicas, negativas,
+  verbos comuns, adjetivos e preposições.
+- As frases devem ter aproximadamente 5 a 12 palavras.
+- Evite construções muito complexas.
+  `,
+
+  intermediate: `
+- Utilize vocabulário mais diversificado e expressões naturais.
+- Explore passado, futuro, comparações, conectores,
+  verbos modais e orações subordinadas.
+- Inclua situações que exijam interpretação de contexto.
+- As frases devem ter aproximadamente 9 a 18 palavras.
+  `,
+
+  advanced: `
+- Utilize vocabulário rico, expressões idiomáticas e nuances.
+- Explore condicionais, voz passiva, tempos compostos,
+  discurso indireto e estruturas subordinadas.
+- Inclua argumentos, hipóteses, opiniões e situações profissionais.
+- As frases devem ter aproximadamente 12 a 25 palavras.
+  `,
+};
+
 const prompt = `
-Você é responsável por criar desafios de tradução para um jogo de idiomas.
+Você é o professor responsável por criar desafios de tradução
+para uma plataforma profissional de aprendizagem de idiomas.
 
-Crie exatamente uma frase em português brasileiro para o jogador traduzir para ${languageName}.
+MISSÃO:
+Crie exatamente uma frase original em português brasileiro
+para o estudante traduzir para ${languageName}.
 
-Nível: ${difficulty}.
+TEMA DESTA RODADA:
+${selectedTopic}
 
-Regras:
-- A frase deve ser natural e adequada ao nível informado.
-- Use situações cotidianas.
+NÍVEL DO ESTUDANTE:
+${difficulty}
+
+ORIENTAÇÕES PARA O NÍVEL:
+${difficultyInstructions[difficulty as keyof typeof difficultyInstructions]}
+
+VARIEDADE OBRIGATÓRIA:
+- Não use sempre frases sobre alimentação ou rotina matinal.
+- Explore situações reais, interessantes e diferentes.
+- Alterne entre perguntas, afirmações, negativas e hipóteses.
+- Varie pessoas, tempos verbais e construções gramaticais.
+- Não transforme todos os desafios em frases no presente.
+- Crie frases que ensinem algo útil ao estudante.
+- Não use frases artificiais apenas para testar gramática.
+
+HISTÓRICO RECENTE DA PARTIDA:
+${recentPhrases.length > 0
+  ? recentPhrases.map((phrase, index) => `${index + 1}. ${phrase}`).join("\n")
+  : "Nenhuma frase anterior."}
+
+REGRAS DE ORIGINALIDADE:
+- Não repita nenhuma frase do histórico.
+- Evite repetir o mesmo contexto, assunto ou estrutura gramatical.
+- Escolha uma situação diferente das rodadas anteriores.
+- Não mencione o tema escolhido explicitamente na resposta.
+
+REGRAS DE QUALIDADE:
+- A frase original deve ser natural em português brasileiro.
+- Deve possuir uma tradução válida e natural em ${languageName}.
+- Evite ambiguidades que prejudiquem a avaliação.
 - Não inclua a tradução na frase original.
-- Evite frases ambíguas.
-- A resposta de referência deve ser uma tradução natural e correta.
-- A explicação deve orientar a avaliação sem exigir palavras idênticas.
+- A tradução de referência deve preservar o significado.
+- A orientação de avaliação deve aceitar construções alternativas
+  semanticamente corretas.
 
-Responda exclusivamente em JSON neste formato:
+Responda exclusivamente em JSON:
 {
-  "original_text": "frase em português",
-  "reference_answer": "tradução esperada",
-  "evaluation_guide": "orientação para avaliar a tradução"
+  "original_text": "Frase em português brasileiro",
+  "reference_answer": "Tradução natural em ${languageName}",
+  "evaluation_guide": "Critérios específicos para avaliar esta frase"
 }
 `;
 
@@ -150,9 +245,10 @@ const geminiResponse = await fetch(
         },
       ],
       generationConfig: {
-        responseMimeType: "application/json",
-        temperature: 0.7,
-      },
+  responseMimeType: "application/json",
+  temperature: 0.9,
+  maxOutputTokens: 256,
+},
     }),
   }
 );
