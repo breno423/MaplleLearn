@@ -1767,10 +1767,6 @@ export default function App() {
               Hora do <span>desafio!</span>
             </h1>
 
-            <button onClick={generateRound}>
-              Testar geração de frase
-            </button>
-
             <p className="intro-copy">
               Mostre o que você sabe e conquiste seus pontos.
             </p>
@@ -1868,6 +1864,8 @@ export default function App() {
                     <p className="language-status">
                       Seu idioma: {matchLanguage === 'fr' ? '🇫🇷 Francês' : '🇬🇧 Inglês'}
                     </p>
+
+
                   )}
 
                   {matchLanguage && !opponentLanguage && (
@@ -1904,7 +1902,17 @@ export default function App() {
                       <p>
                         Seu idioma: {matchLanguage === 'fr' ? '🇫🇷 Francês' : '🇬🇧 Inglês'}
                       </p>
+
+                      <button
+                        type="button"
+                        onClick={generateRound}
+                        disabled={roundLoading}
+                      >
+                        {roundLoading ? 'Preparando desafio...' : 'Começar desafio'}
+                      </button>
                     </>
+
+
                   )}
 
                   {activeRoundId && (
