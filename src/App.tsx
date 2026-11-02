@@ -1905,6 +1905,7 @@ export default function App() {
 
                       <button
                         type="button"
+                        className="match-action-button"
                         onClick={generateRound}
                         disabled={roundLoading}
                       >
@@ -1930,6 +1931,7 @@ export default function App() {
                       {!roundEvaluation && (
                         <>
                           <textarea
+                            className="translation-input"
                             value={userAnswer}
                             onChange={(event) => setUserAnswer(event.target.value)}
                             placeholder="Digite sua tradução..."
@@ -1939,6 +1941,7 @@ export default function App() {
 
                           <button
                             type="button"
+                            className="match-action-button"
                             onClick={submitAnswer}
                             disabled={answerLoading || !userAnswer.trim()}
                           >
