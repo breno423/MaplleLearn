@@ -199,6 +199,25 @@ export default function App() {
   >([]);
   const [roomStatus, setRoomStatus] = useState<'waiting' | 'playing' | 'finished'>('waiting');
   const [isReady, setIsReady] = useState(false);
+  const [activeRoundId, setActiveRoundId] = useState('');
+  const [roundNumber, setRoundNumber] = useState(0);
+  const [originalText, setOriginalText] = useState('');
+
+  const [userAnswer, setUserAnswer] = useState('');
+  const [roundLoading, setRoundLoading] = useState(false);
+  const [answerLoading, setAnswerLoading] = useState(false);
+
+  const [roundEvaluation, setRoundEvaluation] = useState<{
+    is_correct: boolean;
+    score: number;
+    corrected_answer: string;
+    feedback: string;
+    grammar_explanation: string;
+    alternative_translations: string[];
+  } | null>(null);
+
+  const [nextPlayerId, setNextPlayerId] = useState('');
+  const [matchFinished, setMatchFinished] = useState(false);
 
   async function loadUserProfile(user: {
     id: string;
@@ -571,27 +590,109 @@ export default function App() {
     }
   }
 
-  async function testGenerateRound() {
-    if (!activeMatchId) {
-      console.error('Nenhuma partida ativa.');
-      return;
-    }
+  async function generateRound() {
+    if (!activeMatchId || roundLoading) return;
 
-    const { data, error } = await supabase.functions.invoke(
-      'generate-round',
-      {
-        body: {
-          match_id: activeMatchId,
-        },
+    setRoundLoading(true);
+    setNotice('');
+    setRoundEvaluation(null);
+    setUserAnswer('');
+    setActiveRoundId('');
+    setOriginalText('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'generate-round',
+        {
+          body: {
+            match_id: activeMatchId,
+          },
+        }
+      );
+
+      if (error) throw error;
+
+      if (!data?.success || !data?.round_id || !data?.original_text) {
+        throw new Error('Não foi possível carregar a rodada.');
       }
-    );
 
-    if (error) {
+      setActiveRoundId(data.round_id);
+      setRoundNumber(data.round_number);
+      setOriginalText(data.original_text);
+
+      console.log('Rodada carregada:', data);
+    } catch (error) {
       console.error('Erro ao gerar rodada:', error);
+
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível gerar a frase.'
+      );
+    } finally {
+      setRoundLoading(false);
+    }
+  }
+
+  async function submitAnswer() {
+    if (
+      !activeMatchId ||
+      !activeRoundId ||
+      !userAnswer.trim() ||
+      answerLoading
+    ) {
       return;
     }
 
-    console.log('Rodada gerada:', data);
+    setAnswerLoading(true);
+    setNotice('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        'evaluate-answer',
+        {
+          body: {
+            match_id: activeMatchId,
+            round_id: activeRoundId,
+            user_answer: userAnswer.trim(),
+          },
+        }
+      );
+
+      if (error) {
+        const context = (error as any).context;
+
+        if (context instanceof Response) {
+          const details = await context.clone().json().catch(() => null);
+
+          throw new Error(
+            details?.error || 'Não foi possível avaliar sua resposta.'
+          );
+        }
+
+        throw error;
+      }
+
+      if (!data?.success || !data?.evaluation) {
+        throw new Error('A avaliação retornou um resultado inválido.');
+      }
+
+      setRoundEvaluation(data.evaluation);
+      setNextPlayerId(data.next_player_id || '');
+      setMatchFinished(Boolean(data.match_finished));
+
+      console.log('Avaliação recebida:', data);
+    } catch (error) {
+      console.error('Erro ao enviar resposta:', error);
+
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível enviar sua resposta.'
+      );
+    } finally {
+      setAnswerLoading(false);
+    }
   }
 
   async function saveProfile() {
@@ -1666,7 +1767,7 @@ export default function App() {
               Hora do <span>desafio!</span>
             </h1>
 
-            <button onClick={testGenerateRound}>
+            <button onClick={generateRound}>
               Testar geração de frase
             </button>
 
@@ -1721,78 +1822,184 @@ export default function App() {
             </div>
 
             <div className="match-challenge">
-              <div className="eyebrow">
-                <Sparkles size={15} />
-                CONFIGURAÇÃO DO DUELO
-              </div>
+              {!languagesReady ? (
+                <>
+                  <div className="eyebrow">
+                    <Sparkles size={15} />
+                    CONFIGURAÇÃO DO DUELO
+                  </div>
 
-              <h2>Qual idioma você quer praticar?</h2>
+                  <h2>Qual idioma você quer praticar?</h2>
 
-              <p>
-                Escolha seu idioma. Seu adversário poderá escolher
-                francês ou inglês independentemente da sua escolha.
-              </p>
+                  <p>
+                    Escolha seu idioma. Seu adversário poderá escolher
+                    francês ou inglês independentemente da sua escolha.
+                  </p>
 
-              <div className="language-options">
-                <button
-                  type="button"
-                  className={`language-option ${matchLanguage === 'en' ? 'selected' : ''}`}
-                  onClick={() => chooseMatchLanguage('en')}
-                  disabled={languageLoading || languagesReady}
-                >
-                  <span>🇬🇧</span>
-                  <strong>Inglês</strong>
-                  <small>English</small>
-                </button>
+                  <div className="language-options">
+                    <button
+                      type="button"
+                      className={`language-option ${matchLanguage === 'en' ? 'selected' : ''}`}
+                      onClick={() => chooseMatchLanguage('en')}
+                      disabled={languageLoading}
+                    >
+                      <span>🇬🇧</span>
+                      <strong>Inglês</strong>
+                      <small>English</small>
+                    </button>
 
-                <button
-                  type="button"
-                  className={`language-option ${matchLanguage === 'fr' ? 'selected' : ''}`}
-                  onClick={() => chooseMatchLanguage('fr')}
-                  disabled={languageLoading || languagesReady}
-                >
-                  <span>🇫🇷</span>
-                  <strong>Francês</strong>
-                  <small>Français</small>
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      className={`language-option ${matchLanguage === 'fr' ? 'selected' : ''}`}
+                      onClick={() => chooseMatchLanguage('fr')}
+                      disabled={languageLoading}
+                    >
+                      <span>🇫🇷</span>
+                      <strong>Francês</strong>
+                      <small>Français</small>
+                    </button>
+                  </div>
 
-              {languageLoading && (
-                <p>Salvando sua escolha...</p>
+                  {languageLoading && (
+                    <p>Salvando sua escolha...</p>
+                  )}
+
+                  {matchLanguage && (
+                    <p className="language-status">
+                      Seu idioma: {matchLanguage === 'fr' ? '🇫🇷 Francês' : '🇬🇧 Inglês'}
+                    </p>
+                  )}
+
+                  {matchLanguage && !opponentLanguage && (
+                    <div className="match-waiting">
+                      <span className="waiting-indicator" />
+                      Aguardando seu adversário escolher o idioma...
+                    </div>
+                  )}
+
+                  {opponentLanguage && (
+                    <div className="match-opponent-language">
+                      Adversário escolheu:
+                      <strong>
+                        {opponentLanguage === 'fr' ? ' 🇫🇷 Francês' : ' 🇬🇧 Inglês'}
+                      </strong>
+                    </div>
+                  )}
+
+                  <div className="match-mascot">
+                    <Maplle />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="eyebrow">
+                    <Sparkles size={15} />
+                    DESAFIO DE TRADUÇÃO
+                  </div>
+
+                  {!activeRoundId && (
+                    <>
+                      <h2>Prepare-se para jogar!</h2>
+
+                      <p>
+                        Seu idioma: {matchLanguage === 'fr' ? '🇫🇷 Francês' : '🇬🇧 Inglês'}
+                      </p>
+                    </>
+                  )}
+
+                  {activeRoundId && (
+                    <>
+                      <p className="round-counter">
+                        RODADA {roundNumber} DE 20
+                      </p>
+
+                      <h2>Traduza a frase abaixo:</h2>
+
+                      <div className="round-original-text">
+                        {originalText}
+                      </div>
+
+                      {!roundEvaluation && (
+                        <>
+                          <textarea
+                            value={userAnswer}
+                            onChange={(event) => setUserAnswer(event.target.value)}
+                            placeholder="Digite sua tradução..."
+                            disabled={answerLoading}
+                            rows={4}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={submitAnswer}
+                            disabled={answerLoading || !userAnswer.trim()}
+                          >
+                            {answerLoading ? 'Avaliando resposta...' : 'Enviar resposta'}
+                          </button>
+                        </>
+                      )}
+
+                      {roundEvaluation && (
+                        <div className="round-result">
+                          <h2>
+                            {roundEvaluation.is_correct
+                              ? 'Muito bem! 🎉'
+                              : 'Vamos aprender juntos!'}
+                          </h2>
+
+                          <div className="round-result-score">
+                            {roundEvaluation.score}/10
+                          </div>
+
+                          <p>{roundEvaluation.feedback}</p>
+
+                          <div>
+                            <strong>Sua resposta:</strong>
+                            <p>{userAnswer}</p>
+                          </div>
+
+                          <div>
+                            <strong>Tradução corrigida:</strong>
+                            <p>{roundEvaluation.corrected_answer}</p>
+                          </div>
+
+                          <div>
+                            <strong>Explicação gramatical:</strong>
+                            <p>{roundEvaluation.grammar_explanation}</p>
+                          </div>
+
+                          {roundEvaluation.alternative_translations.length > 0 && (
+                            <div>
+                              <strong>Outras traduções possíveis:</strong>
+
+                              <ul>
+                                {roundEvaluation.alternative_translations.map(
+                                  (translation, index) => (
+                                    <li key={index}>{translation}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          )}
+
+                          {matchFinished ? (
+                            <h3>Partida finalizada!</h3>
+                          ) : (
+                            <div className="match-waiting">
+                              <span className="waiting-indicator" />
+                              Aguardando o próximo jogador...
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  <div className="match-mascot">
+                    <Maplle />
+                  </div>
+                </>
               )}
-
-              {matchLanguage && (
-                <p className="language-status">
-                  Seu idioma: {matchLanguage === 'fr' ? '🇫🇷 Francês' : '🇬🇧 Inglês'}
-                </p>
-              )}
-
-              {matchLanguage && !opponentLanguage && (
-                <div className="match-waiting">
-                  <span className="waiting-indicator" />
-                  Aguardando seu adversário escolher o idioma...
-                </div>
-              )}
-
-              {opponentLanguage && (
-                <div className="match-opponent-language">
-                  Adversário escolheu:
-                  <strong>
-                    {opponentLanguage === 'fr' ? ' 🇫🇷 Francês' : ' 🇬🇧 Inglês'}
-                  </strong>
-                </div>
-              )}
-
-              {languagesReady && (
-                <div className="match-ready">
-                  <h3>Os dois jogadores estão prontos!</h3>
-                  <p>Maplle está preparando o primeiro desafio.</p>
-                </div>
-              )}
-
-              <div className="match-mascot">
-                <Maplle />
-              </div>
 
               {notice && (
                 <p className="error-message">{notice}</p>

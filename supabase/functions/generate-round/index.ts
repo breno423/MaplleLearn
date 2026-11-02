@@ -192,8 +192,50 @@ if (
 
 // Nesta etapa, devolvemos somente a frase ao frontend.
 // A resposta de referência permanece no servidor.
+// Salva a rodada no Supabase usando permissões administrativas.
+const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error("Configuração do Supabase não encontrada.");
+}
+
+const saveResponse = await fetch(
+  `${supabaseUrl}/rest/v1/rpc/save_generated_round`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "apikey": serviceRoleKey,
+      "Authorization": `Bearer ${serviceRoleKey}`,
+    },
+    body: JSON.stringify({
+      p_match_id: match.id,
+      p_player_id: userId,
+      p_original_text: generatedRound.original_text,
+      p_target_language: targetLanguage,
+      p_difficulty: difficulty,
+      p_reference_answer: generatedRound.reference_answer,
+      p_evaluation_guide: generatedRound.evaluation_guide,
+    }),
+  }
+);
+
+if (!saveResponse.ok) {
+  const saveError = await saveResponse.text();
+
+  console.error("Erro ao salvar rodada:", saveError);
+
+  throw new Error("Não foi possível salvar a rodada no banco.");
+}
+
+const savedRound = await saveResponse.json();
+
+// A resposta de referência nunca é enviada ao frontend.
 return Response.json({
   success: true,
+  round_id: savedRound.round_id,
+  round_number: savedRound.round_number,
   original_text: generatedRound.original_text,
   target_language: targetLanguage,
   difficulty,
