@@ -571,6 +571,29 @@ export default function App() {
     }
   }
 
+  async function testGenerateRound() {
+    if (!activeMatchId) {
+      console.error('Nenhuma partida ativa.');
+      return;
+    }
+
+    const { data, error } = await supabase.functions.invoke(
+      'generate-round',
+      {
+        body: {
+          match_id: activeMatchId,
+        },
+      }
+    );
+
+    if (error) {
+      console.error('Erro ao gerar rodada:', error);
+      return;
+    }
+
+    console.log('Rodada gerada:', data);
+  }
+
   async function saveProfile() {
     if (!currentUserId) return;
 
@@ -1642,6 +1665,10 @@ export default function App() {
             <h1>
               Hora do <span>desafio!</span>
             </h1>
+
+            <button onClick={testGenerateRound}>
+              Testar geração de frase
+            </button>
 
             <p className="intro-copy">
               Mostre o que você sabe e conquiste seus pontos.
