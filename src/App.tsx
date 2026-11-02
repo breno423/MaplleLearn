@@ -864,30 +864,45 @@ export default function App() {
     }
   }
 
-  async function createRoom() {
-    setLoading(true);
-    setNotice('');
+  
+async function createRoom() {
+  setLoading(true);
+  setNotice('');
 
-    try {
-      const { data, error } = await supabase.rpc('create_room');
+  try {
+    const { data, error } = await supabase.rpc('create_room');
 
-      if (error) throw error;
+    if (error) throw error;
 
-      const room = data as { room_id: string; code: string };
+    const room = data as { room_id: string; code: string };
 
-      setActiveRoomId(room.room_id);
-      setActiveCode(room.code);
-      setIsReady(false);
-      setRoomStatus('waiting');
-      setScreen('lobby');
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : 'Não foi possível criar a sala.'
-      );
-    } finally {
-      setLoading(false);
-    }
+    setActiveRoomId(room.room_id);
+    setActiveCode(room.code);
+
+    // O usuário que criou a sala é o anfitrião.
+    setHostId(currentUserId);
+
+    setIsReady(false);
+    setMembers([]);
+    setRoomStatus('waiting');
+
+    setScreen('lobby');
+
+    // Carrega os membros imediatamente.
+    await refreshLobby(room.room_id);
+
+  } catch (error) {
+    console.error('Erro ao criar sala:', error);
+
+    setNotice(
+      error instanceof Error
+        ? error.message
+        : 'Não foi possível criar a sala.'
+    );
+  } finally {
+    setLoading(false);
   }
+}
 
   async function joinRoom(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
