@@ -1560,3 +1560,258 @@ footer {
   cursor: not-allowed;
   box-shadow: none;
 }
+
+
+/* =========================
+   SISTEMA DE AMIZADES
+========================= */
+
+.friends-workspace {
+  max-width: 850px;
+}
+
+.friends-card {
+  background: linear-gradient(145deg, #38294a, #30233f 75%);
+  border: 1px solid #c7a9f536;
+  border-radius: 22px;
+  padding: 28px;
+  box-shadow: 0 20px 55px #100a1e40;
+}
+
+.friends-section {
+  padding: 5px 0 24px;
+  margin-bottom: 22px;
+  border-bottom: 1px solid #ffffff14;
+}
+
+.friends-section:last-of-type {
+  border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.friends-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #c4a9ff;
+  margin-bottom: 18px;
+}
+
+.friends-section-title h2 {
+  font: 700 15px Manrope, sans-serif;
+  letter-spacing: 0;
+  margin: 0;
+  color: #f8f5ff;
+}
+
+.friends-count {
+  display: grid;
+  place-items: center;
+  min-width: 23px;
+  height: 23px;
+  padding: 0 6px;
+  border-radius: 20px;
+  background: #a78bfa20;
+  color: #d8c5fa;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.friends-search {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.friends-search .input-wrap {
+  flex: 1;
+  margin: 0;
+}
+
+.friends-search-button,
+.friend-action {
+  border: 1px solid #b99ce94a;
+  background: #a78bfa20;
+  color: #e0d1ff;
+  border-radius: 10px;
+  padding: 0 17px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.friends-search-button:hover,
+.friend-action:hover {
+  background: #a78bfa38;
+}
+
+.friends-search-button:disabled,
+.friend-action:disabled,
+.friend-actions button:disabled,
+.friend-remove:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 0;
+  border-bottom: 1px solid #ffffff0c;
+}
+
+.friend-row:last-child {
+  border-bottom: 0;
+}
+
+.friend-avatar {
+  width: 43px;
+  height: 43px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  overflow: hidden;
+  color: #d8c5fa;
+  background: #a78bfa22;
+  border: 1px solid #c4a9ff35;
+}
+
+.friend-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.friend-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.friend-info strong {
+  color: #f8f5ff;
+  font-size: 12px;
+}
+
+.friend-info span {
+  color: #a99eb8;
+  font-size: 10px;
+}
+
+.friend-action {
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.friend-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.friend-actions button,
+.friend-remove {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: .2s;
+}
+
+.friend-accept {
+  color: #8ee0b5;
+  border: 1px solid #8ee0b530;
+  background: #8ee0b512;
+}
+
+.friend-decline,
+.friend-remove {
+  color: #f29aab;
+  border: 1px solid #f29aab30;
+  background: #f29aab12;
+}
+
+.friend-accept:hover {
+  background: #8ee0b528;
+}
+
+.friend-decline:hover,
+.friend-remove:hover {
+  background: #f29aab25;
+}
+
+.friend-pending {
+  color: #f2c66d;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.friends-empty,
+.friends-loading {
+  color: #a99eb8;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.friends-refresh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px auto 0;
+  border: 0;
+  background: transparent;
+  color: #c3a8f5;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .friends-card {
+    padding: 20px 16px;
+  }
+
+  .friends-search {
+    flex-direction: column;
+  }
+
+  .friends-search-button {
+    min-height: 43px;
+  }
+
+  .friend-row {
+    gap: 9px;
+  }
+
+  .friend-action {
+    padding: 0 10px;
+    font-size: 10px;
+  }
+}
+
+.friends-open-button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 18px 0 0 auto;
+  padding: 11px 16px;
+  border: 1px solid #b99ce94a;
+  border-radius: 10px;
+  background: #a78bfa18;
+  color: #d8c5fa;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.friends-open-button:hover {
+  background: #a78bfa30;
+}

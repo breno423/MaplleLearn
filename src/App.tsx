@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import './App.css';
+import FriendsPanel from './components/friends/FriendsPanel';
 
 function Maplle() {
   return (
@@ -158,7 +159,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [screen, setScreen] = useState<
-    'login' | 'rooms' | 'lobby' | 'profile' | 'match'
+    'login' | 'rooms' | 'lobby' | 'profile' | 'match' | 'friends'
   >('login');
   const [profileReturnScreen, setProfileReturnScreen] = useState<
     'rooms' | 'lobby' | 'match'
@@ -1570,6 +1571,14 @@ export default function App() {
             Sair da sala
           </button>
 
+          <button
+            className="friends-open-button"
+            onClick={() => setScreen('friends')}
+          >
+            <Users size={17} />
+            Meus amigos
+          </button>
+
           <div className="workspace-heading">
             <div className="eyebrow">
               <Gamepad2 size={15} />
@@ -1669,6 +1678,13 @@ export default function App() {
 
           </div>
         </section>
+      )}
+
+      {screen === 'friends' && (
+        <FriendsPanel
+          currentUserId={currentUserId}
+          onBack={() => setScreen('rooms')}
+        />
       )}
 
       {screen === 'lobby' && (
