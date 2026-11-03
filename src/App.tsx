@@ -319,16 +319,6 @@ export default function App() {
   }, [screen, activeRoomId, currentUserId]);
 
   useEffect(() => {
-    if (!isMyTurn || !roundEvaluation) return;
-
-    setActiveRoundId('');
-    setOriginalText('');
-    setUserAnswer('');
-    setRoundEvaluation(null);
-    setMatchFinished(false);
-  }, [isMyTurn, roundEvaluation]);
-
-  useEffect(() => {
     if (screen !== 'match' || !activeRoomId || !currentUserId) {
       return;
     }
@@ -599,6 +589,14 @@ export default function App() {
     };
   }, [screen, activeMatchId, currentUserId]);
 
+  function continueAfterEvaluation() {
+    setRoundEvaluation(null);
+    setActiveRoundId('');
+    setOriginalText('');
+    setUserAnswer('');
+    setNextPlayerId('');
+  }
+
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setNotice('');
@@ -726,12 +724,14 @@ export default function App() {
     }
   }
 
+
   async function submitAnswer() {
     if (
       !activeMatchId ||
       !activeRoundId ||
       !userAnswer.trim() ||
-      answerLoading
+      answerLoading ||
+      roundEvaluation
     ) {
       return;
     }
@@ -769,11 +769,13 @@ export default function App() {
         throw new Error('A avaliação retornou um resultado inválido.');
       }
 
+      // Guarda o feedback antes de qualquer atualização da interface.
       setRoundEvaluation(data.evaluation);
       setNextPlayerId(data.next_player_id || '');
       setMatchFinished(Boolean(data.match_finished));
 
       console.log('Avaliação recebida:', data);
+
     } catch (error) {
       console.error('Erro ao enviar resposta:', error);
 
@@ -786,6 +788,7 @@ export default function App() {
       setAnswerLoading(false);
     }
   }
+
 
   async function saveProfile() {
     if (!currentUserId) return;
@@ -2041,7 +2044,7 @@ export default function App() {
                     </>
                   )}
 
-                  {activeRoundId && (
+                  {(activeRoundId || roundEvaluation) && (
                     <>
                       <p className="round-counter">
                         RODADA {roundNumber} DE 20
@@ -2119,7 +2122,22 @@ export default function App() {
                           )}
 
                           {matchFinished ? (
-                            <h3>Partida finalizada!</h3>
+                            <h3>Partida finalizada! 🏆</h3>
+                          ) : isMyTurn ? (
+                            <div className="match-next-turn">
+                              <p>
+                                Seu adversário já terminou. É sua vez novamente!
+                              </p>
+
+                              <button
+                                type="button"
+                                className="match-action-button"
+                                onClick={continueAfterEvaluation}
+                              >
+                                Continuar para próxima rodada
+                                <ArrowRight size={18} />
+                              </button>
+                            </div>
                           ) : (
                             <div className="match-waiting">
                               <span className="waiting-indicator" />
