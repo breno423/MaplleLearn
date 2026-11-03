@@ -201,14 +201,16 @@ O Maplle Learn utiliza recursos de segurança do Supabase para proteger os dados
 - [x] Gerenciamento de participantes.
 - [x] Sistema de prontidão.
 - [x] Sincronização de salas em tempo real.
-- [ ] Desenvolvimento das experiências de aprendizagem.
-- [ ] Implementação de desafios e atividades em francês.
-- [ ] Sistema de pontuação e progressão.
+- [x] Desenvolvimento das experiências de aprendizagem.
+- [x] Implementação de desafios e atividades em francês.
+- [x] Sistema de pontuação e progressão.
 - [ ] Expansão dos recursos de gamificação.
 - [ ] Planejamento da integração com AWS.
 - [ ] Implementação do AWS CloudWatch para observabilidade.
 - [ ] Implementação do AWS X-Ray para rastreamento distribuído.
 - [ ] Configuração de métricas, logs e monitoramento.
+- [ ] Sistema de amizades(chat + invites).
+- [ ] Desafios diários gerados pela IA.
 
 ## 💡 Visão do projeto
 
