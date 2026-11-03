@@ -1,4 +1,4 @@
-# ✨ Maplle Learn
+# 🔮 Maplle Learn
 
 ### Aprenda francês. Conecte-se. Evolua jogando.
 
@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/Status-Em%20desenvolvimento-A78BFA?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
   <img src="https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" />
+  <img src="https://img.shields.io/badge/AWS-Observabilidade%20planejada-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white" />
 </p>
 
 ---
@@ -29,16 +30,19 @@ A plataforma conta com **Maplle**, seu mascote e guia virtual, que representa a 
 - Promover a interação e a aprendizagem colaborativa.
 - Criar uma experiência visual intuitiva e consistente.
 - Desenvolver uma plataforma com estrutura preparada para novas funcionalidades.
+- Planejar recursos de observabilidade para acompanhar o desempenho e a confiabilidade da aplicação.
 
 ## 🚀 Funcionalidades
 
 ### 🔐 Autenticação
+
 - Cadastro e login com e-mail e senha.
 - Autenticação com Google.
 - Autenticação com GitHub.
 - Gerenciamento de sessão com Supabase Auth.
 
 ### 🎮 Salas multiplayer
+
 - Criação de salas privadas.
 - Geração de códigos para compartilhamento.
 - Entrada em salas por código.
@@ -48,6 +52,7 @@ A plataforma conta com **Maplle**, seu mascote e guia virtual, que representa a 
 - Atualização dos dados das salas em tempo real.
 
 ### 🎨 Experiência visual
+
 - Interface desenvolvida com identidade visual própria.
 - Design responsivo e experiência intuitiva.
 - Mascote Maplle integrado à identidade da plataforma.
@@ -66,21 +71,29 @@ A plataforma conta com **Maplle**, seu mascote e guia virtual, que representa a 
 | PostgreSQL | Banco de dados |
 | Supabase Realtime | Atualização de informações em tempo real |
 | Lucide React | Biblioteca de ícones |
+| AWS CloudWatch | Monitoramento de logs e métricas — integração planejada |
+| AWS X-Ray | Rastreamento distribuído de requisições — integração planejada |
 
 ## 🏗️ Arquitetura
 
-O projeto utiliza uma arquitetura baseada em frontend e serviços gerenciados pelo Supabase.
+O projeto utiliza uma arquitetura baseada em frontend e serviços gerenciados pelo Supabase. Como parte da evolução da infraestrutura, está prevista a integração com serviços da AWS para observabilidade e monitoramento.
 
 ```mermaid
 flowchart TD
     A[Usuário] --> B[React + TypeScript]
     B --> C[Interface Maplle Learn]
     C --> D[Supabase Client]
+
     D --> E[Supabase Auth]
     D --> F[PostgreSQL]
     D --> G[Supabase Realtime]
+
     F --> H[Salas e participantes]
     G --> I[Atualização em tempo real]
+
+    C -.-> J[Observabilidade planejada]
+    J -.-> K[AWS CloudWatch]
+    J -.-> L[AWS X-Ray]
 ```
 
 ### Banco de dados
@@ -92,6 +105,30 @@ Entre as principais estruturas utilizadas estão:
 - `room_members`: participantes e status de prontidão.
 
 A aplicação utiliza políticas de segurança em nível de linha (**Row Level Security — RLS**) e funções RPC para controlar operações importantes, como criação, entrada e gerenciamento de salas.
+
+## 📊 Observabilidade e monitoramento
+
+Como parte da evolução da infraestrutura do Maplle Learn, está planejada a integração com serviços da **Amazon Web Services (AWS)** voltados à observabilidade da aplicação.
+
+O objetivo é ampliar a capacidade de acompanhar o comportamento do sistema, identificar possíveis falhas e analisar o desempenho da aplicação.
+
+### Serviços planejados
+
+| Serviço | Finalidade |
+|---|---|
+| AWS CloudWatch | Centralização e monitoramento de logs, métricas e alarmes. |
+| AWS X-Ray | Rastreamento distribuído de requisições e análise de latência. |
+
+### Objetivos da integração
+
+- Monitorar o funcionamento da aplicação.
+- Facilitar a identificação e análise de erros.
+- Acompanhar métricas de desempenho.
+- Melhorar a visibilidade sobre o comportamento do sistema.
+- Identificar possíveis gargalos durante a execução.
+- Criar uma base para futuras melhorias de confiabilidade e escalabilidade.
+
+**Status da integração:** Planejada. Os serviços AWS ainda não foram implementados no projeto.
 
 ## ⚙️ Como executar o projeto
 
@@ -168,12 +205,18 @@ O Maplle Learn utiliza recursos de segurança do Supabase para proteger os dados
 - [ ] Implementação de desafios e atividades em francês.
 - [ ] Sistema de pontuação e progressão.
 - [ ] Expansão dos recursos de gamificação.
+- [ ] Planejamento da integração com AWS.
+- [ ] Implementação do AWS CloudWatch para observabilidade.
+- [ ] Implementação do AWS X-Ray para rastreamento distribuído.
+- [ ] Configuração de métricas, logs e monitoramento.
 
 ## 💡 Visão do projeto
 
 O Maplle Learn nasceu da ideia de que aprender um novo idioma não precisa ser uma atividade solitária ou repetitiva.
 
 Queremos transformar o aprendizado de francês em uma jornada mais interativa, colaborativa e divertida, aproximando tecnologia, educação e gamificação.
+
+Além da experiência de aprendizagem, o projeto busca evoluir sua arquitetura e infraestrutura, incorporando práticas de segurança, monitoramento e observabilidade para apoiar seu crescimento.
 
 ---
 
