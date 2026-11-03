@@ -864,45 +864,45 @@ export default function App() {
     }
   }
 
-  
-async function createRoom() {
-  setLoading(true);
-  setNotice('');
 
-  try {
-    const { data, error } = await supabase.rpc('create_room');
+  async function createRoom() {
+    setLoading(true);
+    setNotice('');
 
-    if (error) throw error;
+    try {
+      const { data, error } = await supabase.rpc('create_room');
 
-    const room = data as { room_id: string; code: string };
+      if (error) throw error;
 
-    setActiveRoomId(room.room_id);
-    setActiveCode(room.code);
+      const room = data as { room_id: string; code: string };
 
-    // O usuário que criou a sala é o anfitrião.
-    setHostId(currentUserId);
+      setActiveRoomId(room.room_id);
+      setActiveCode(room.code);
 
-    setIsReady(false);
-    setMembers([]);
-    setRoomStatus('waiting');
+      // O usuário que criou a sala é o anfitrião.
+      setHostId(currentUserId);
 
-    setScreen('lobby');
+      setIsReady(false);
+      setMembers([]);
+      setRoomStatus('waiting');
 
-    // Carrega os membros imediatamente.
-    await refreshLobby(room.room_id);
+      setScreen('lobby');
 
-  } catch (error) {
-    console.error('Erro ao criar sala:', error);
+      // Carrega os membros imediatamente.
+      await refreshLobby(room.room_id);
 
-    setNotice(
-      error instanceof Error
-        ? error.message
-        : 'Não foi possível criar a sala.'
-    );
-  } finally {
-    setLoading(false);
+    } catch (error) {
+      console.error('Erro ao criar sala:', error);
+
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : 'Não foi possível criar a sala.'
+      );
+    } finally {
+      setLoading(false);
+    }
   }
-}
 
   async function joinRoom(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -929,8 +929,12 @@ async function createRoom() {
       setActiveRoomId(room.room_id);
       setActiveCode(room.code);
       setIsReady(false);
+      setMembers([]);
       setRoomStatus('waiting');
       setScreen('lobby');
+
+      // Carrega os dois jogadores imediatamente.
+      await refreshLobby(room.room_id);
     } catch (error) {
       setNotice(
         error instanceof Error ? error.message : 'Não foi possível entrar na sala.'
