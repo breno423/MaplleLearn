@@ -288,6 +288,11 @@ Responda exclusivamente em JSON válido, sem markdown:
               responseMimeType: "application/json",
               temperature: 0.1,
               maxOutputTokens: 900,
+
+              thinkingConfig: {
+                thinkingLevel: "low",
+              },
+
             },
           }),
         }
