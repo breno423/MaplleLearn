@@ -167,12 +167,15 @@ export default function App() {
   const [profile, setProfile] = useState<{
     display_name: string;
     avatar_url: string | null;
+    username: string;
   }>({
     display_name: 'Jogador',
     avatar_url: null,
+    username: '',
   });
 
   const [profileName, setProfileName] = useState('Jogador');
+  const [profileUsername, setProfileUsername] = useState('');
   const [profileFile, setProfileFile] = useState<File | null>(null);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileNotice, setProfileNotice] = useState('');
@@ -249,7 +252,7 @@ export default function App() {
 
     const { data: existing, error } = await supabase
       .from('profiles')
-      .select('display_name, avatar_url')
+      .select('display_name, avatar_url, username')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -263,6 +266,7 @@ export default function App() {
         id: user.id,
         display_name: providerName || 'Jogador',
         avatar_url: providerAvatar || null,
+        username: null,
       };
 
       const { error: insertError } = await supabase
@@ -277,15 +281,20 @@ export default function App() {
       setProfile({
         display_name: initialProfile.display_name,
         avatar_url: initialProfile.avatar_url,
+        username: '',
       });
 
       setProfileName(initialProfile.display_name);
+
+      setProfileUsername('');
+
       return;
     }
 
     const currentProfile = {
       display_name: existing.display_name || providerName || 'Jogador',
       avatar_url: existing.avatar_url || providerAvatar || null,
+      username: existing.username || '',
     };
 
     // Preenche dados ausentes, mas preserva personalizações existentes.
@@ -303,6 +312,7 @@ export default function App() {
 
     setProfile(currentProfile);
     setProfileName(currentProfile.display_name);
+    setProfileUsername(currentProfile.username);
   }
 
   useEffect(() => {
@@ -492,6 +502,7 @@ export default function App() {
         setProfile({
           display_name: 'Jogador',
           avatar_url: null,
+          username: '',
         });
 
         setProfileName('Jogador');
@@ -806,6 +817,15 @@ export default function App() {
       return;
     }
 
+    const normalizedUsername = profileUsername.trim().toLowerCase();
+
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(normalizedUsername)) {
+      setProfileNotice(
+        'O username deve ter entre 3 e 20 caracteres, usando apenas letras, números e _.'
+      );
+      return;
+    }
+
     if (profileFile && !profileFile.type.startsWith('image/')) {
       setProfileNotice('Selecione um arquivo de imagem válido.');
       return;
@@ -847,6 +867,7 @@ export default function App() {
         .update({
           display_name: trimmedName,
           avatar_url: avatarUrl,
+          username: normalizedUsername,
         })
         .eq('id', currentUserId);
 
@@ -855,16 +876,26 @@ export default function App() {
       setProfile({
         display_name: trimmedName,
         avatar_url: avatarUrl,
+        username: normalizedUsername,
       });
 
       setProfileFile(null);
       setProfileNotice('Perfil atualizado com sucesso!');
     } catch (error) {
-      setProfileNotice(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível salvar seu perfil.'
-      );
+      if (error instanceof Error && error.message.includes('23505')) {
+        setProfileNotice('Esse username já está sendo utilizado.');
+      } else if (
+        error instanceof Error &&
+        error.message.includes('profiles_username_format')
+      ) {
+        setProfileNotice('Formato de username inválido.');
+      } else {
+        setProfileNotice(
+          error instanceof Error
+            ? error.message
+            : 'Não foi possível salvar seu perfil.'
+        );
+      }
     } finally {
       setProfileSaving(false);
     }
@@ -1531,14 +1562,30 @@ export default function App() {
             </div>
 
             <div className="profile-field">
-              <label htmlFor="profile-name">Nome de usuário</label>
+              <label htmlFor="profile-name">Nome de exibição</label>
               <input
                 id="profile-name"
                 value={profileName}
                 maxLength={30}
                 onChange={(e) => setProfileName(e.target.value)}
-                placeholder="Digite seu nome"
+                placeholder="Como deseja aparecer no jogo?"
               />
+            </div>
+
+            <div className="profile-field">
+              <label htmlFor="profile-username">Username</label>
+              <input
+                id="profile-username"
+                value={profileUsername}
+                maxLength={20}
+                onChange={(e) =>
+                  setProfileUsername(
+                    e.target.value.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase()
+                  )
+                }
+                placeholder="Ex: breno_123"
+              />
+              <small>Seu identificador para encontrar e adicionar amigos.</small>
             </div>
 
             <button
