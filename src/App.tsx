@@ -686,14 +686,24 @@ export default function App() {
       const { data, error } = await supabase.functions.invoke(
         'generate-round',
         {
-          body: {
-            match_id: activeMatchId,
-          },
+          body: { match_id: activeMatchId },
         }
       );
 
-      if (error) throw error;
+      if (error) {
+        let details = null;
 
+        if (error.context instanceof Response) {
+          details = await error.context.clone().text();
+        }
+
+        console.error('Erro detalhado ao gerar rodada:', {
+          message: error.message,
+          details,
+        });
+
+        throw error;
+      }
       if (!data?.success || !data?.round_id || !data?.original_text) {
         throw new Error('Não foi possível carregar a rodada.');
       }
