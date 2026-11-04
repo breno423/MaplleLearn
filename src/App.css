@@ -1818,7 +1818,7 @@ footer {
 
 /* Card Principal de Resultado */
 .round-result {
-  background-color: #ffffff;
+  background-color:#560265;
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   padding: 24px;
@@ -1845,7 +1845,7 @@ footer {
 .round-result-score {
   align-self: center;
   background: linear-gradient(135deg, #3b82f6, #2563eb);
-  color: #560265;
+  color: #faf7fa;
   font-weight: 700;
   font-size: 1.25rem;
   padding: 6px 20px;
