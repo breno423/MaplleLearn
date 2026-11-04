@@ -1862,7 +1862,7 @@ export default function App() {
             <div className="match-settings">
               <div>
                 <span>IDIOMA</span>
-                <strong>Francês</strong>
+                <strong>Francês|Inglês</strong>
               </div>
 
               <div>
