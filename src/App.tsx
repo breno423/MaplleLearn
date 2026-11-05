@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   ArrowLeft,
@@ -207,6 +207,7 @@ export default function App() {
   const [isReady, setIsReady] = useState(false);
   const [activeRoundId, setActiveRoundId] = useState('');
   const [roundNumber, setRoundNumber] = useState(0);
+  const timeoutTriggeredRef = useRef<string | null>(null);
   const [originalText, setOriginalText] = useState('');
 
   // Estado compartilhado da partida
@@ -437,6 +438,79 @@ export default function App() {
       supabase.removeChannel(channel);
     };
   }, [screen, activeRoomId, currentUserId]);
+
+  useEffect(() => {
+  if (
+    screen !== 'match' ||
+    !activeMatchId ||
+    !responseDeadlineAt
+  ) {
+    setRemainingSeconds(null);
+    return;
+  }
+
+  const deadline = new Date(responseDeadlineAt).getTime();
+
+  if (!Number.isFinite(deadline)) {
+    console.error('Prazo da rodada inválido:', responseDeadlineAt);
+    return;
+  }
+
+  const timeoutKey = `${activeMatchId}:${currentRound}:${responseDeadlineAt}`;
+
+  const updateCountdown = () => {
+    const seconds = Math.max(
+      0,
+      Math.ceil((deadline - Date.now()) / 1000)
+    );
+
+    setRemainingSeconds(seconds);
+
+    if (
+      seconds === 0 &&
+      timeoutTriggeredRef.current !== timeoutKey
+    ) {
+      // Impede chamadas duplicadas para esta rodada.
+      timeoutTriggeredRef.current = timeoutKey;
+
+      console.log('[match] Prazo encerrado. Processando timeouts.');
+
+      void (async () => {
+        const { data, error } = await supabase.functions.invoke(
+          'process-timeouts',
+          {
+            body: {
+              match_id: activeMatchId,
+            },
+          }
+        );
+
+        if (error) {
+          console.error(
+            '[match] Erro ao processar timeouts:',
+            error
+          );
+
+          setNotice('Não foi possível processar o encerramento do tempo.');
+          return;
+        }
+
+        console.log('[match] Timeouts processados:', data);
+      })();
+    }
+  };
+
+  updateCountdown();
+
+  const interval = window.setInterval(updateCountdown, 1000);
+
+  return () => window.clearInterval(interval);
+}, [
+  screen,
+  activeMatchId,
+  currentRound,
+  responseDeadlineAt,
+]);
 
   useEffect(() => {
     let mounted = true;
