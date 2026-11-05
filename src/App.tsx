@@ -628,6 +628,9 @@ export default function App() {
     setOriginalText('');
     setUserAnswer('');
     setNextPlayerId('');
+    setRoundReady(false);
+    setResponseDeadlineAt(null);
+    setRemainingSeconds(null);
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -741,16 +744,16 @@ export default function App() {
       }
 
       setActiveRoundId(data.round_id);
-setRoundNumber(data.round_number);
-setOriginalText(data.original_text);
+      setRoundNumber(data.round_number);
+      setOriginalText(data.original_text);
 
-setRoundReady(Boolean(data.round_ready));
-setResponseDeadlineAt(data.response_deadline_at ?? null);
+      setRoundReady(Boolean(data.round_ready));
+      setResponseDeadlineAt(data.response_deadline_at ?? null);
 
-console.log('Estado de sincronização:', {
-  round_ready: data.round_ready,
-  response_deadline_at: data.response_deadline_at,
-});
+      console.log('Estado de sincronização:', {
+        round_ready: data.round_ready,
+        response_deadline_at: data.response_deadline_at,
+      });
 
       console.log('Rodada carregada:', data);
     } catch (error) {
