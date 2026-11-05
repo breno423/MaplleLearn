@@ -50,7 +50,6 @@ export default {
           player_two_id,
           player_one_language,
           player_two_language,
-          current_player_id,
           current_round,
           current_difficulty,
           status
@@ -101,15 +100,6 @@ export default {
         return Response.json(
           { error: "Esta partida não está em andamento." },
           { status: 400 }
-        );
-      }
-
-      if (match.current_player_id !== userId) {
-        console.error("[generate-round] Não é a vez deste jogador");
-
-        return Response.json(
-          { error: "Ainda não é sua vez de jogar." },
-          { status: 403 }
         );
       }
 
