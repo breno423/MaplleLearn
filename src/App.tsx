@@ -222,6 +222,7 @@ export default function App() {
   const [answerLoading, setAnswerLoading] = useState(false);
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
+  const [roundCompleted, setRoundCompleted] = useState(false);
 
   const [roundEvaluation, setRoundEvaluation] = useState<{
     is_correct: boolean;
@@ -230,6 +231,7 @@ export default function App() {
     feedback: string;
     grammar_explanation: string;
     alternative_translations: string[];
+    was_timeout?: boolean;
   } | null>(null);
 
   const [nextPlayerId, setNextPlayerId] = useState('');
@@ -338,106 +340,137 @@ export default function App() {
   }, [screen, activeRoomId, currentUserId]);
 
   useEffect(() => {
-    if (screen !== 'match' || !activeRoomId || !currentUserId) {
+  if (
+    screen !== 'match' ||
+    !activeMatchId ||
+    !currentUserId ||
+    currentRound <= 0
+  ) {
+    return;
+  }
+
+  let cancelled = false;
+
+  async function loadRoundProgress() {
+    const { data, error } = await supabase
+      .from('match_answers')
+      .select(`
+        player_id,
+        user_answer,
+        is_correct,
+        score,
+        corrected_answer,
+        feedback,
+        grammar_explanation,
+        alternative_translations,
+        was_timeout,
+        match_rounds!inner (
+          match_id,
+          round_number
+        )
+      `)
+      .eq('match_rounds.match_id', activeMatchId)
+      .eq('match_rounds.round_number', currentRound);
+
+    if (error) {
+      console.error('Erro ao carregar progresso da rodada:', error);
       return;
     }
 
-    let cancelled = false;
+    if (cancelled || !data) return;
 
-    type MatchData = {
-      id: string;
-      player_one_id: string;
-      player_two_id: string;
-      player_one_language: 'fr' | 'en' | null;
-      player_two_language: 'fr' | 'en' | null;
-      current_round: number;
-      total_rounds: number;
-      response_deadline_at: string | null;
-      status: 'in_progress' | 'completed' | 'cancelled';
-    };
+    // Atualiza as pontuações acumuladas da partida.
+    const { data: allAnswers, error: scoreError } = await supabase
+      .from('match_answers')
+      .select(`
+        player_id,
+        score,
+        match_rounds!inner (
+          match_id
+        )
+      `)
+      .eq('match_rounds.match_id', activeMatchId);
 
-    const updateMatchState = (match: MatchData) => {
-      if (cancelled) return;
+    if (scoreError) {
+      console.error('Erro ao atualizar pontuação:', scoreError);
+    } else if (!cancelled && allAnswers) {
+      let ownTotal = 0;
+      let opponentTotal = 0;
 
-      setActiveMatchId(match.id);
-
-      const isPlayerOne = match.player_one_id === currentUserId;
-
-      const ownLanguage = isPlayerOne
-        ? match.player_one_language
-        : match.player_two_language;
-
-      const otherLanguage = isPlayerOne
-        ? match.player_two_language
-        : match.player_one_language;
-
-      setMatchLanguage(ownLanguage);
-      setOpponentLanguage(otherLanguage);
-
-      setLanguagesReady(
-        Boolean(match.player_one_language && match.player_two_language)
-      );
-
-      setCurrentRound(match.current_round);
-      setTotalRounds(match.total_rounds);
-      setResponseDeadlineAt(match.response_deadline_at);
-      setRoundReady(Boolean(match.response_deadline_at));
-
-      if (match.status === 'completed') {
-        setMatchFinished(true);
-      }
-    };
-
-    const loadMatch = async () => {
-      const { data, error } = await supabase
-        .from('matches')
-        .select(`
-    id,
-    player_one_id,
-    player_two_id,
-    player_one_language,
-    player_two_language,
-    current_round,
-    total_rounds,
-    response_deadline_at,
-    status
-  `)
-        .eq('room_id', activeRoomId)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Erro ao carregar partida:', error);
-        return;
-      }
-
-      if (data) {
-        updateMatchState(data as MatchData);
-      }
-    };
-
-    loadMatch();
-
-    const channel = supabase
-      .channel(`match-${activeRoomId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'matches',
-          filter: `room_id=eq.${activeRoomId}`,
-        },
-        (payload) => {
-          updateMatchState(payload.new as MatchData);
+      allAnswers.forEach((answer) => {
+        if (answer.player_id === currentUserId) {
+          ownTotal += answer.score;
+        } else {
+          opponentTotal += answer.score;
         }
-      )
-      .subscribe();
+      });
 
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [screen, activeRoomId, currentUserId]);
+      setMyScore(ownTotal);
+      setOpponentScore(opponentTotal);
+    }
+
+    if (cancelled) return;
+
+    // A rodada só termina quando existem duas respostas.
+    setRoundCompleted(data.length >= 2);
+
+    // Recupera o feedback próprio, inclusive em caso de timeout.
+    const ownAnswer = data.find(
+      (answer) => answer.player_id === currentUserId
+    );
+
+    if (ownAnswer) {
+      setRoundEvaluation({
+        is_correct: ownAnswer.is_correct,
+        score: ownAnswer.score,
+        corrected_answer: ownAnswer.corrected_answer ?? '',
+        feedback: ownAnswer.feedback ?? '',
+        grammar_explanation: ownAnswer.grammar_explanation ?? '',
+        alternative_translations:
+          ownAnswer.alternative_translations ?? [],
+        was_timeout: ownAnswer.was_timeout,
+      });
+
+      if (ownAnswer.was_timeout) {
+        setUserAnswer('');
+      }
+    }
+  }
+
+  loadRoundProgress();
+
+  const channel = supabase
+    .channel(`match-progress-${activeMatchId}-${currentRound}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'match_answers',
+      },
+      () => {
+        void loadRoundProgress();
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'matches',
+        filter: `id=eq.${activeMatchId}`,
+      },
+      () => {
+        void loadRoundProgress();
+      }
+    )
+    .subscribe();
+
+  return () => {
+    cancelled = true;
+    supabase.removeChannel(channel);
+  };
+}, [screen, activeMatchId, currentUserId, currentRound]);
 
   useEffect(() => {
   if (
