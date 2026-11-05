@@ -69,7 +69,6 @@ export default {
           id,
           player_one_id,
           player_two_id,
-          current_player_id,
           current_round,
           status
         `)
@@ -99,13 +98,6 @@ export default {
         return Response.json(
           { error: "Esta partida não está em andamento." },
           { status: 400 }
-        );
-      }
-
-      if (match.current_player_id !== userId) {
-        return Response.json(
-          { error: "Ainda não é sua vez de jogar." },
-          { status: 403 }
         );
       }
 
@@ -435,27 +427,32 @@ Responda exclusivamente em JSON válido, sem markdown:
       const savedResult = await saveResponse.json();
 
       console.log("[evaluate-answer] Avaliação salva com sucesso:", {
-        round_number: savedResult.round_number,
-        next_player_id: savedResult.next_player_id,
-        match_finished: savedResult.match_finished,
-      });
+  round_number: savedResult.round_number,
+  round_completed: savedResult.round_completed,
+  waiting_for_opponent: savedResult.waiting_for_opponent,
+  match_finished: savedResult.match_finished,
+  player_one_score: savedResult.player_one_score,
+  player_two_score: savedResult.player_two_score,
+});
 
-      // 8. Retorna o resultado ao jogador.
-      return Response.json({
-        success: true,
-        evaluation: {
-          is_correct: evaluation.is_correct,
-          score: evaluation.score,
-          corrected_answer: evaluation.corrected_answer,
-          feedback: evaluation.feedback,
-          grammar_explanation: evaluation.grammar_explanation,
-          alternative_translations:
-            evaluation.alternative_translations,
-        },
-        round_number: savedResult.round_number,
-        next_player_id: savedResult.next_player_id,
-        match_finished: savedResult.match_finished,
-      });
+// Retorna a avaliação individual e o estado compartilhado da rodada.
+return Response.json({
+  success: true,
+  evaluation: {
+    is_correct: evaluation.is_correct,
+    score: evaluation.score,
+    corrected_answer: evaluation.corrected_answer,
+    feedback: evaluation.feedback,
+    grammar_explanation: evaluation.grammar_explanation,
+    alternative_translations: evaluation.alternative_translations,
+  },
+  round_number: savedResult.round_number,
+  round_completed: savedResult.round_completed,
+  waiting_for_opponent: savedResult.waiting_for_opponent,
+  match_finished: savedResult.match_finished,
+  player_one_score: savedResult.player_one_score,
+  player_two_score: savedResult.player_two_score,
+});
 
     } catch (error) {
       console.error("[evaluate-answer] Erro geral:", error);
