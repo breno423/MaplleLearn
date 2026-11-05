@@ -463,13 +463,17 @@ try {
       console.log("[generate-round] Execução concluída com sucesso");
 
       return Response.json({
-        success: true,
-        round_id: savedRound.round_id,
-        round_number: savedRound.round_number,
-        original_text: generatedRound.original_text,
-        target_language: targetLanguage,
-        difficulty,
-      });
+  success: true,
+  round_id: savedRound.round_id,
+  round_number: savedRound.round_number,
+  original_text: generatedRound.original_text,
+  target_language: targetLanguage,
+  difficulty,
+
+  // Sincronização da rodada compartilhada
+  round_ready: savedRound.round_ready,
+  response_deadline_at: savedRound.response_deadline_at,
+});
 
     } catch (error) {
       console.error("[generate-round] ERRO INTERNO:", {

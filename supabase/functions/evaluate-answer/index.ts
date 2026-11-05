@@ -143,6 +143,52 @@ export default {
         );
       }
 
+
+      // Registra a resposta antes de iniciar a avaliação do Gemini.
+      console.log("[evaluate-answer] Registrando envio da resposta.");
+
+      const claimResponse = await fetch(
+        `${supabaseUrl}/rest/v1/rpc/claim_match_answer`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: serviceRoleKey,
+            Authorization: `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({
+            p_match_id: match_id,
+            p_round_id: round_id,
+            p_player_id: userId,
+            p_user_answer: user_answer.trim(),
+          }),
+        }
+      );
+
+      if (!claimResponse.ok) {
+        const details = await claimResponse.text();
+
+        console.error(
+          "[evaluate-answer] Erro ao registrar resposta:",
+          claimResponse.status,
+          details
+        );
+
+        return Response.json(
+          {
+            error: details.includes("tempo para responder")
+              ? "O tempo para responder terminou."
+              : "Não foi possível registrar sua resposta.",
+          },
+          { status: 409 }
+        );
+      }
+
+      const claimResult = await claimResponse.json();
+
+      console.log("[evaluate-answer] Resposta registrada:", claimResult);
+
+
       // 3. Busca a resposta de referência no servidor.
       console.log("[evaluate-answer] Consultando resposta de referência.");
 

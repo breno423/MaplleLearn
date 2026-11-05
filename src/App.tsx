@@ -209,6 +209,13 @@ export default function App() {
   const [roundNumber, setRoundNumber] = useState(0);
   const [originalText, setOriginalText] = useState('');
 
+  // Estado compartilhado da partida
+  const [currentRound, setCurrentRound] = useState(0);
+  const [totalRounds, setTotalRounds] = useState(5);
+  const [responseDeadlineAt, setResponseDeadlineAt] = useState<string | null>(null);
+  const [roundReady, setRoundReady] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+
   const [userAnswer, setUserAnswer] = useState('');
   const [roundLoading, setRoundLoading] = useState(false);
   const [answerLoading, setAnswerLoading] = useState(false);
@@ -340,16 +347,18 @@ export default function App() {
       id: string;
       player_one_id: string;
       player_two_id: string;
-      current_player_id: string;
       player_one_language: 'fr' | 'en' | null;
       player_two_language: 'fr' | 'en' | null;
+      current_round: number;
+      total_rounds: number;
+      response_deadline_at: string | null;
+      status: 'in_progress' | 'completed' | 'cancelled';
     };
 
     const updateMatchState = (match: MatchData) => {
       if (cancelled) return;
 
       setActiveMatchId(match.id);
-      setCurrentPlayerId(match.current_player_id);
 
       const isPlayerOne = match.player_one_id === currentUserId;
 
@@ -367,19 +376,31 @@ export default function App() {
       setLanguagesReady(
         Boolean(match.player_one_language && match.player_two_language)
       );
+
+      setCurrentRound(match.current_round);
+      setTotalRounds(match.total_rounds);
+      setResponseDeadlineAt(match.response_deadline_at);
+      setRoundReady(Boolean(match.response_deadline_at));
+
+      if (match.status === 'completed') {
+        setMatchFinished(true);
+      }
     };
 
     const loadMatch = async () => {
       const { data, error } = await supabase
         .from('matches')
         .select(`
-        id,
-        player_one_id,
-        player_two_id,
-        player_one_language,
-        player_two_language,
-        current_player_id
-      `)
+    id,
+    player_one_id,
+    player_two_id,
+    player_one_language,
+    player_two_language,
+    current_round,
+    total_rounds,
+    response_deadline_at,
+    status
+  `)
         .eq('room_id', activeRoomId)
         .maybeSingle();
 
