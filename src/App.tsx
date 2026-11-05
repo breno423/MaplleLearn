@@ -706,12 +706,13 @@ export default function App() {
   async function generateRound() {
     if (!activeMatchId || roundLoading) return;
 
-    setRoundLoading(true);
-    setNotice('');
     setRoundEvaluation(null);
     setUserAnswer('');
     setActiveRoundId('');
     setOriginalText('');
+    setRoundReady(false);
+    setResponseDeadlineAt(null);
+    setRemainingSeconds(null);
 
     try {
       const { data, error } = await supabase.functions.invoke(
@@ -740,8 +741,16 @@ export default function App() {
       }
 
       setActiveRoundId(data.round_id);
-      setRoundNumber(data.round_number);
-      setOriginalText(data.original_text);
+setRoundNumber(data.round_number);
+setOriginalText(data.original_text);
+
+setRoundReady(Boolean(data.round_ready));
+setResponseDeadlineAt(data.response_deadline_at ?? null);
+
+console.log('Estado de sincronização:', {
+  round_ready: data.round_ready,
+  response_deadline_at: data.response_deadline_at,
+});
 
       console.log('Rodada carregada:', data);
     } catch (error) {
