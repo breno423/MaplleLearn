@@ -346,6 +346,7 @@ useEffect(() => {
   }
 
   let cancelled = false;
+  let channel: ReturnType<typeof supabase.channel> | null = null;
 
   async function loadActiveMatch() {
     const { data: match, error } = await supabase
@@ -367,7 +368,9 @@ useEffect(() => {
     if (cancelled) return;
 
     if (error || !match) {
-      console.error('Erro ao recuperar partida:', error);
+      if (error) {
+        console.error('Erro ao recuperar partida:', error);
+      }
       return;
     }
 
@@ -375,16 +378,17 @@ useEffect(() => {
 
     const isPlayerOne = match.player_one_id === currentUserId;
 
-    const myLanguage = isPlayerOne
-      ? match.player_one_language
-      : match.player_two_language;
+    setMatchLanguage(
+      isPlayerOne
+        ? match.player_one_language
+        : match.player_two_language
+    );
 
-    const otherLanguage = isPlayerOne
-      ? match.player_two_language
-      : match.player_one_language;
-
-    setMatchLanguage(myLanguage);
-    setOpponentLanguage(otherLanguage);
+    setOpponentLanguage(
+      isPlayerOne
+        ? match.player_two_language
+        : match.player_one_language
+    );
 
     setLanguagesReady(
       Boolean(match.player_one_language && match.player_two_language)
@@ -395,12 +399,41 @@ useEffect(() => {
     setResponseDeadlineAt(match.response_deadline_at);
     setRoundReady(Boolean(match.response_deadline_at));
     setMatchFinished(match.status === 'completed');
+
+    // Escuta alterações da partida nos dois navegadores.
+    if (!channel) {
+      channel = supabase
+        .channel(`match-state-${match.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'matches',
+            filter: `id=eq.${match.id}`,
+          },
+          () => {
+            void loadActiveMatch();
+          }
+        )
+        .subscribe();
+    }
   }
 
-  loadActiveMatch();
+  void loadActiveMatch();
+
+  // Polling como segurança caso o Realtime não entregue o evento.
+  const interval = window.setInterval(() => {
+    void loadActiveMatch();
+  }, 1500);
 
   return () => {
     cancelled = true;
+    window.clearInterval(interval);
+
+    if (channel) {
+      void supabase.removeChannel(channel);
+    }
   };
 }, [screen, activeRoomId, currentUserId]);
 
@@ -856,8 +889,9 @@ useEffect(() => {
       }
 
       setActiveRoundId(data.round_id);
-      setRoundNumber(data.round_number);
-      setOriginalText(data.original_text);
+setRoundNumber(data.round_number);
+setCurrentRound(data.round_number);
+setOriginalText(data.original_text);
 
       setRoundReady(Boolean(data.round_ready));
       setResponseDeadlineAt(data.response_deadline_at ?? null);
@@ -2372,111 +2406,7 @@ useEffect(() => {
                       )}
                     </>
                   )}
-                  {(activeRoundId || roundEvaluation) && (
-                    <>
-                      <p className="round-counter">
-                        RODADA {roundNumber} DE 20
-                      </p>
-
-                      <h2>Traduza a frase abaixo:</h2>
-
-                      <div className="round-original-text">
-                        {originalText}
-                      </div>
-
-                      {!roundEvaluation && (
-                        <>
-                          <textarea
-                            className="translation-input"
-                            value={userAnswer}
-                            onChange={(event) => setUserAnswer(event.target.value)}
-                            placeholder="Digite sua tradução..."
-                            disabled={answerLoading}
-                            rows={4}
-                          />
-
-                          <button
-                            type="button"
-                            className="match-action-button"
-                            onClick={submitAnswer}
-                            disabled={answerLoading || !userAnswer.trim()}
-                          >
-                            {answerLoading ? 'Avaliando resposta...' : 'Enviar resposta'}
-                          </button>
-                        </>
-                      )}
-
-                      {roundEvaluation && (
-                        <div className="round-result">
-                          <h2>
-                            {roundEvaluation.is_correct
-                              ? 'Muito bem! 🎉'
-                              : 'Vamos aprender juntos!'}
-                          </h2>
-
-                          <div className="round-result-score">
-                            {roundEvaluation.score}/10
-                          </div>
-
-                          <p>{roundEvaluation.feedback}</p>
-
-                          <div>
-                            <strong>Sua resposta:</strong>
-                            <p>{userAnswer}</p>
-                          </div>
-
-                          <div>
-                            <strong>Tradução corrigida:</strong>
-                            <p>{roundEvaluation.corrected_answer}</p>
-                          </div>
-
-                          <div>
-                            <strong>Explicação gramatical:</strong>
-                            <p>{roundEvaluation.grammar_explanation}</p>
-                          </div>
-
-                          {roundEvaluation.alternative_translations.length > 0 && (
-                            <div>
-                              <strong>Outras traduções possíveis:</strong>
-
-                              <ul>
-                                {roundEvaluation.alternative_translations.map(
-                                  (translation, index) => (
-                                    <li key={index}>{translation}</li>
-                                  )
-                                )}
-                              </ul>
-                            </div>
-                          )}
-
-                          {matchFinished ? (
-                            <h3>Partida finalizada! 🏆</h3>
-                          ) : isMyTurn ? (
-                            <div className="match-next-turn">
-                              <p>
-                                Seu adversário já terminou. É sua vez novamente!
-                              </p>
-
-                              <button
-                                type="button"
-                                className="match-action-button"
-                                onClick={continueAfterEvaluation}
-                              >
-                                Continuar para próxima rodada
-                                <ArrowRight size={18} />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="match-waiting">
-                              <span className="waiting-indicator" />
-                              Aguardando o próximo jogador...
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-
+                  
                   <div className="match-mascot">
                     <Maplle />
                   </div>
