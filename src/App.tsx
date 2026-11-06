@@ -208,8 +208,8 @@ export default function App() {
   const [activeRoundId, setActiveRoundId] = useState('');
   const [roundNumber, setRoundNumber] = useState(0);
   const timeoutTriggeredRef = useRef<string | null>(null);
+  const ignoredRoundRef = useRef<number | null>(null);
   const [originalText, setOriginalText] = useState('');
-
   // Estado compartilhado da partida
   const [currentRound, setCurrentRound] = useState(0);
   const [totalRounds, setTotalRounds] = useState(5);
@@ -340,18 +340,18 @@ export default function App() {
   }, [screen, activeRoomId, currentUserId]);
 
 
-useEffect(() => {
-  if (screen !== 'match' || !activeRoomId || !currentUserId) {
-    return;
-  }
+  useEffect(() => {
+    if (screen !== 'match' || !activeRoomId || !currentUserId) {
+      return;
+    }
 
-  let cancelled = false;
-  let channel: ReturnType<typeof supabase.channel> | null = null;
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-  async function loadActiveMatch() {
-    const { data: match, error } = await supabase
-      .from('matches')
-      .select(`
+    async function loadActiveMatch() {
+      const { data: match, error } = await supabase
+        .from('matches')
+        .select(`
         id,
         player_one_id,
         player_two_id,
@@ -362,80 +362,80 @@ useEffect(() => {
         response_deadline_at,
         status
       `)
-      .eq('room_id', activeRoomId)
-      .maybeSingle();
+        .eq('room_id', activeRoomId)
+        .maybeSingle();
 
-    if (cancelled) return;
+      if (cancelled) return;
 
-    if (error || !match) {
-      if (error) {
-        console.error('Erro ao recuperar partida:', error);
+      if (error || !match) {
+        if (error) {
+          console.error('Erro ao recuperar partida:', error);
+        }
+        return;
       }
-      return;
+
+      setActiveMatchId(match.id);
+
+      const isPlayerOne = match.player_one_id === currentUserId;
+
+      setMatchLanguage(
+        isPlayerOne
+          ? match.player_one_language
+          : match.player_two_language
+      );
+
+      setOpponentLanguage(
+        isPlayerOne
+          ? match.player_two_language
+          : match.player_one_language
+      );
+
+      setLanguagesReady(
+        Boolean(match.player_one_language && match.player_two_language)
+      );
+
+      setCurrentRound(match.current_round);
+      setTotalRounds(match.total_rounds);
+      setResponseDeadlineAt(match.response_deadline_at);
+      setRoundReady(Boolean(match.response_deadline_at));
+      setMatchFinished(match.status === 'completed');
+
+      // Escuta alterações da partida nos dois navegadores.
+      if (!channel) {
+        channel = supabase
+          .channel(`match-state-${match.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'matches',
+              filter: `id=eq.${match.id}`,
+            },
+            () => {
+              void loadActiveMatch();
+            }
+          )
+          .subscribe();
+      }
     }
 
-    setActiveMatchId(match.id);
-
-    const isPlayerOne = match.player_one_id === currentUserId;
-
-    setMatchLanguage(
-      isPlayerOne
-        ? match.player_one_language
-        : match.player_two_language
-    );
-
-    setOpponentLanguage(
-      isPlayerOne
-        ? match.player_two_language
-        : match.player_one_language
-    );
-
-    setLanguagesReady(
-      Boolean(match.player_one_language && match.player_two_language)
-    );
-
-    setCurrentRound(match.current_round);
-    setTotalRounds(match.total_rounds);
-    setResponseDeadlineAt(match.response_deadline_at);
-    setRoundReady(Boolean(match.response_deadline_at));
-    setMatchFinished(match.status === 'completed');
-
-    // Escuta alterações da partida nos dois navegadores.
-    if (!channel) {
-      channel = supabase
-        .channel(`match-state-${match.id}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'matches',
-            filter: `id=eq.${match.id}`,
-          },
-          () => {
-            void loadActiveMatch();
-          }
-        )
-        .subscribe();
-    }
-  }
-
-  void loadActiveMatch();
-
-  // Polling como segurança caso o Realtime não entregue o evento.
-  const interval = window.setInterval(() => {
     void loadActiveMatch();
-  }, 1500);
 
-  return () => {
-    cancelled = true;
-    window.clearInterval(interval);
+    // Polling como segurança caso o Realtime não entregue o evento.
+    const interval = window.setInterval(() => {
+      void loadActiveMatch();
+    }, 1500);
 
-    if (channel) {
-      void supabase.removeChannel(channel);
-    }
-  };
-}, [screen, activeRoomId, currentUserId]);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
+    };
+  }, [screen, activeRoomId, currentUserId]);
 
 
   useEffect(() => {
@@ -510,6 +510,9 @@ useEffect(() => {
 
       if (cancelled) return;
 
+      // Não restaura o feedback de uma rodada já encerrada localmente.
+      if (ignoredRoundRef.current === currentRound) return;
+
       // A rodada só termina quando existem duas respostas.
       setRoundCompleted(data.length >= 2);
 
@@ -536,7 +539,7 @@ useEffect(() => {
       }
     }
 
-        // Primeira consulta imediata.
+    // Primeira consulta imediata.
     void loadRoundProgress();
 
     // Atualiza o progresso mesmo se o Realtime falhar.
@@ -571,7 +574,7 @@ useEffect(() => {
       )
       .subscribe();
 
-        return () => {
+    return () => {
       cancelled = true;
       window.clearInterval(progressInterval);
       void supabase.removeChannel(channel);
@@ -605,7 +608,7 @@ useEffect(() => {
 
       setRemainingSeconds(seconds);
 
-           if (
+      if (
         seconds === 0 &&
         !answerLoading &&
         !roundEvaluation &&
@@ -646,7 +649,7 @@ useEffect(() => {
     const interval = window.setInterval(updateCountdown, 1000);
 
     return () => window.clearInterval(interval);
-    }, [
+  }, [
     screen,
     activeMatchId,
     currentRound,
@@ -775,16 +778,14 @@ useEffect(() => {
   }, []);
 
 
-  function continueAfterEvaluation() {
-    setRoundEvaluation(null);
-    setActiveRoundId('');
-    setOriginalText('');
-    setUserAnswer('');
-    setNextPlayerId('');
-    setRoundReady(false);
-    setRoundCompleted(false);
-    setResponseDeadlineAt(null);
-    setRemainingSeconds(null);
+  async function continueAfterEvaluation() {
+    if (roundLoading || matchFinished) return;
+
+    // Impede que o polling recupere o feedback da rodada anterior.
+    ignoredRoundRef.current = currentRound;
+
+    // Gera imediatamente o próximo desafio individual.
+    await generateRound();
   }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
@@ -900,9 +901,9 @@ useEffect(() => {
       }
 
       setActiveRoundId(data.round_id);
-setRoundNumber(data.round_number);
-setCurrentRound(data.round_number);
-setOriginalText(data.original_text);
+      setRoundNumber(data.round_number);
+      setCurrentRound(data.round_number);
+      setOriginalText(data.original_text);
 
       setRoundReady(Boolean(data.round_ready));
       setResponseDeadlineAt(data.response_deadline_at ?? null);
@@ -2417,7 +2418,7 @@ setOriginalText(data.original_text);
                       )}
                     </>
                   )}
-                  
+
                   <div className="match-mascot">
                     <Maplle />
                   </div>
