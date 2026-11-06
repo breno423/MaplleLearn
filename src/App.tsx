@@ -340,21 +340,21 @@ export default function App() {
   }, [screen, activeRoomId, currentUserId]);
 
   useEffect(() => {
-  if (
-    screen !== 'match' ||
-    !activeMatchId ||
-    !currentUserId ||
-    currentRound <= 0
-  ) {
-    return;
-  }
+    if (
+      screen !== 'match' ||
+      !activeMatchId ||
+      !currentUserId ||
+      currentRound <= 0
+    ) {
+      return;
+    }
 
-  let cancelled = false;
+    let cancelled = false;
 
-  async function loadRoundProgress() {
-    const { data, error } = await supabase
-      .from('match_answers')
-      .select(`
+    async function loadRoundProgress() {
+      const { data, error } = await supabase
+        .from('match_answers')
+        .select(`
         player_id,
         user_answer,
         is_correct,
@@ -369,181 +369,181 @@ export default function App() {
           round_number
         )
       `)
-      .eq('match_rounds.match_id', activeMatchId)
-      .eq('match_rounds.round_number', currentRound);
+        .eq('match_rounds.match_id', activeMatchId)
+        .eq('match_rounds.round_number', currentRound);
 
-    if (error) {
-      console.error('Erro ao carregar progresso da rodada:', error);
-      return;
-    }
+      if (error) {
+        console.error('Erro ao carregar progresso da rodada:', error);
+        return;
+      }
 
-    if (cancelled || !data) return;
+      if (cancelled || !data) return;
 
-    // Atualiza as pontuações acumuladas da partida.
-    const { data: allAnswers, error: scoreError } = await supabase
-      .from('match_answers')
-      .select(`
+      // Atualiza as pontuações acumuladas da partida.
+      const { data: allAnswers, error: scoreError } = await supabase
+        .from('match_answers')
+        .select(`
         player_id,
         score,
         match_rounds!inner (
           match_id
         )
       `)
-      .eq('match_rounds.match_id', activeMatchId);
+        .eq('match_rounds.match_id', activeMatchId);
 
-    if (scoreError) {
-      console.error('Erro ao atualizar pontuação:', scoreError);
-    } else if (!cancelled && allAnswers) {
-      let ownTotal = 0;
-      let opponentTotal = 0;
+      if (scoreError) {
+        console.error('Erro ao atualizar pontuação:', scoreError);
+      } else if (!cancelled && allAnswers) {
+        let ownTotal = 0;
+        let opponentTotal = 0;
 
-      allAnswers.forEach((answer) => {
-        if (answer.player_id === currentUserId) {
-          ownTotal += answer.score;
-        } else {
-          opponentTotal += answer.score;
+        allAnswers.forEach((answer) => {
+          if (answer.player_id === currentUserId) {
+            ownTotal += answer.score;
+          } else {
+            opponentTotal += answer.score;
+          }
+        });
+
+        setMyScore(ownTotal);
+        setOpponentScore(opponentTotal);
+      }
+
+      if (cancelled) return;
+
+      // A rodada só termina quando existem duas respostas.
+      setRoundCompleted(data.length >= 2);
+
+      // Recupera o feedback próprio, inclusive em caso de timeout.
+      const ownAnswer = data.find(
+        (answer) => answer.player_id === currentUserId
+      );
+
+      if (ownAnswer) {
+        setRoundEvaluation({
+          is_correct: ownAnswer.is_correct,
+          score: ownAnswer.score,
+          corrected_answer: ownAnswer.corrected_answer ?? '',
+          feedback: ownAnswer.feedback ?? '',
+          grammar_explanation: ownAnswer.grammar_explanation ?? '',
+          alternative_translations:
+            ownAnswer.alternative_translations ?? [],
+          was_timeout: ownAnswer.was_timeout,
+        });
+
+        if (ownAnswer.was_timeout) {
+          setUserAnswer('');
         }
-      });
-
-      setMyScore(ownTotal);
-      setOpponentScore(opponentTotal);
-    }
-
-    if (cancelled) return;
-
-    // A rodada só termina quando existem duas respostas.
-    setRoundCompleted(data.length >= 2);
-
-    // Recupera o feedback próprio, inclusive em caso de timeout.
-    const ownAnswer = data.find(
-      (answer) => answer.player_id === currentUserId
-    );
-
-    if (ownAnswer) {
-      setRoundEvaluation({
-        is_correct: ownAnswer.is_correct,
-        score: ownAnswer.score,
-        corrected_answer: ownAnswer.corrected_answer ?? '',
-        feedback: ownAnswer.feedback ?? '',
-        grammar_explanation: ownAnswer.grammar_explanation ?? '',
-        alternative_translations:
-          ownAnswer.alternative_translations ?? [],
-        was_timeout: ownAnswer.was_timeout,
-      });
-
-      if (ownAnswer.was_timeout) {
-        setUserAnswer('');
       }
     }
-  }
 
-  loadRoundProgress();
+    loadRoundProgress();
 
-  const channel = supabase
-    .channel(`match-progress-${activeMatchId}-${currentRound}`)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'match_answers',
-      },
-      () => {
-        void loadRoundProgress();
-      }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'matches',
-        filter: `id=eq.${activeMatchId}`,
-      },
-      () => {
-        void loadRoundProgress();
-      }
-    )
-    .subscribe();
+    const channel = supabase
+      .channel(`match-progress-${activeMatchId}-${currentRound}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'match_answers',
+        },
+        () => {
+          void loadRoundProgress();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'matches',
+          filter: `id=eq.${activeMatchId}`,
+        },
+        () => {
+          void loadRoundProgress();
+        }
+      )
+      .subscribe();
 
-  return () => {
-    cancelled = true;
-    supabase.removeChannel(channel);
-  };
-}, [screen, activeMatchId, currentUserId, currentRound]);
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [screen, activeMatchId, currentUserId, currentRound]);
 
   useEffect(() => {
-  if (
-    screen !== 'match' ||
-    !activeMatchId ||
-    !responseDeadlineAt
-  ) {
-    setRemainingSeconds(null);
-    return;
-  }
-
-  const deadline = new Date(responseDeadlineAt).getTime();
-
-  if (!Number.isFinite(deadline)) {
-    console.error('Prazo da rodada inválido:', responseDeadlineAt);
-    return;
-  }
-
-  const timeoutKey = `${activeMatchId}:${currentRound}:${responseDeadlineAt}`;
-
-  const updateCountdown = () => {
-    const seconds = Math.max(
-      0,
-      Math.ceil((deadline - Date.now()) / 1000)
-    );
-
-    setRemainingSeconds(seconds);
-
     if (
-      seconds === 0 &&
-      timeoutTriggeredRef.current !== timeoutKey
+      screen !== 'match' ||
+      !activeMatchId ||
+      !responseDeadlineAt
     ) {
-      // Impede chamadas duplicadas para esta rodada.
-      timeoutTriggeredRef.current = timeoutKey;
+      setRemainingSeconds(null);
+      return;
+    }
 
-      console.log('[match] Prazo encerrado. Processando timeouts.');
+    const deadline = new Date(responseDeadlineAt).getTime();
 
-      void (async () => {
-        const { data, error } = await supabase.functions.invoke(
-          'process-timeouts',
-          {
-            body: {
-              match_id: activeMatchId,
-            },
-          }
-        );
+    if (!Number.isFinite(deadline)) {
+      console.error('Prazo da rodada inválido:', responseDeadlineAt);
+      return;
+    }
 
-        if (error) {
-          console.error(
-            '[match] Erro ao processar timeouts:',
-            error
+    const timeoutKey = `${activeMatchId}:${currentRound}:${responseDeadlineAt}`;
+
+    const updateCountdown = () => {
+      const seconds = Math.max(
+        0,
+        Math.ceil((deadline - Date.now()) / 1000)
+      );
+
+      setRemainingSeconds(seconds);
+
+      if (
+        seconds === 0 &&
+        timeoutTriggeredRef.current !== timeoutKey
+      ) {
+        // Impede chamadas duplicadas para esta rodada.
+        timeoutTriggeredRef.current = timeoutKey;
+
+        console.log('[match] Prazo encerrado. Processando timeouts.');
+
+        void (async () => {
+          const { data, error } = await supabase.functions.invoke(
+            'process-timeouts',
+            {
+              body: {
+                match_id: activeMatchId,
+              },
+            }
           );
 
-          setNotice('Não foi possível processar o encerramento do tempo.');
-          return;
-        }
+          if (error) {
+            console.error(
+              '[match] Erro ao processar timeouts:',
+              error
+            );
 
-        console.log('[match] Timeouts processados:', data);
-      })();
-    }
-  };
+            setNotice('Não foi possível processar o encerramento do tempo.');
+            return;
+          }
 
-  updateCountdown();
+          console.log('[match] Timeouts processados:', data);
+        })();
+      }
+    };
 
-  const interval = window.setInterval(updateCountdown, 1000);
+    updateCountdown();
 
-  return () => window.clearInterval(interval);
-}, [
-  screen,
-  activeMatchId,
-  currentRound,
-  responseDeadlineAt,
-]);
+    const interval = window.setInterval(updateCountdown, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [
+    screen,
+    activeMatchId,
+    currentRound,
+    responseDeadlineAt,
+  ]);
 
   useEffect(() => {
     let mounted = true;
@@ -664,70 +664,6 @@ export default function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (screen !== 'match' || !activeMatchId || !currentUserId) return;
-
-    let cancelled = false;
-
-    async function loadScores() {
-      const { data, error } = await supabase
-        .from('match_answers')
-        .select(`
-        player_id,
-        score,
-        match_rounds!inner (
-          match_id
-        )
-      `)
-        .eq('match_rounds.match_id', activeMatchId);
-
-      if (error) {
-        console.error('Erro ao carregar pontuação:', error);
-        return;
-      }
-
-      if (cancelled || !data) return;
-
-      let ownTotal = 0;
-      let opponentTotal = 0;
-
-      data.forEach((answer) => {
-        if (answer.player_id === currentUserId) {
-          ownTotal += answer.score;
-        } else {
-          opponentTotal += answer.score;
-        }
-      });
-
-      setMyScore(ownTotal);
-      setOpponentScore(opponentTotal);
-    }
-
-    loadScores();
-
-    // Quando a partida for atualizada após uma resposta,
-    // buscamos novamente a pontuação dos dois jogadores.
-    const channel = supabase
-      .channel(`match-scores-${activeMatchId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'matches',
-          filter: `id=eq.${activeMatchId}`,
-        },
-        () => {
-          loadScores();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(channel);
-    };
-  }, [screen, activeMatchId, currentUserId]);
 
   function continueAfterEvaluation() {
     setRoundEvaluation(null);
@@ -736,6 +672,7 @@ export default function App() {
     setUserAnswer('');
     setNextPlayerId('');
     setRoundReady(false);
+    setRoundCompleted(false);
     setResponseDeadlineAt(null);
     setRemainingSeconds(null);
   }
@@ -814,8 +751,11 @@ export default function App() {
   }
 
   async function generateRound() {
-    if (!activeMatchId || roundLoading) return;
+    if (!activeMatchId || roundLoading || matchFinished) return;
 
+    setRoundLoading(true);
+    setNotice('');
+    setRoundCompleted(false);
     setRoundEvaluation(null);
     setUserAnswer('');
     setActiveRoundId('');
@@ -823,7 +763,6 @@ export default function App() {
     setRoundReady(false);
     setResponseDeadlineAt(null);
     setRemainingSeconds(null);
-
     try {
       const { data, error } = await supabase.functions.invoke(
         'generate-round',
@@ -923,7 +862,7 @@ export default function App() {
 
       // Guarda o feedback antes de qualquer atualização da interface.
       setRoundEvaluation(data.evaluation);
-      setNextPlayerId(data.next_player_id || '');
+      setRoundCompleted(Boolean(data.round_completed));
       setMatchFinished(Boolean(data.match_finished));
 
       console.log('Avaliação recebida:', data);
@@ -2212,41 +2151,161 @@ export default function App() {
                     DESAFIO DE TRADUÇÃO
                   </div>
 
-                  {!activeRoundId && (
+                  {!activeRoundId && !roundEvaluation && (
                     <>
-                      {isMyTurn ? (
-                        <>
-                          <h2>É sua vez de jogar! 🎯</h2>
+                      <h2>Prepare-se para jogar! 🎯</h2>
 
+                      <p>
+                        Cada jogador recebe seu próprio desafio.
+                        As respostas acontecem simultaneamente!
+                      </p>
+
+                      <button
+                        type="button"
+                        className="match-action-button"
+                        onClick={generateRound}
+                        disabled={roundLoading || matchFinished}
+                      >
+                        {roundLoading
+                          ? 'Preparando desafio...'
+                          : currentRound === 0
+                            ? 'Começar desafio'
+                            : 'Começar próxima rodada'}
+                      </button>
+                    </>
+                  )}
+
+                  {(activeRoundId || roundEvaluation) && (
+                    <>
+                      <p className="round-counter">
+                        RODADA {roundNumber} DE {totalRounds}
+                      </p>
+
+                      {remainingSeconds !== null && roundReady && (
+                        <p className="round-timer">
+                          Tempo restante: {Math.floor(remainingSeconds / 60)}:
+                          {String(remainingSeconds % 60).padStart(2, '0')}
+                        </p>
+                      )}
+
+                      <h2>Traduza a frase abaixo:</h2>
+
+                      <div className="round-original-text">
+                        {originalText}
+                      </div>
+
+                      {!roundReady && !roundEvaluation && (
+                        <div className="match-waiting">
+                          <span className="waiting-indicator" />
                           <p>
-                            Maplle está preparando seu próximo desafio.
-                            Prepare-se para traduzir!
+                            Aguardando seu adversário gerar o desafio.
+                            O cronômetro começará quando os dois estiverem prontos.
                           </p>
+                        </div>
+                      )}
+
+                      {roundReady && !roundEvaluation && (
+                        <>
+                          <textarea
+                            className="translation-input"
+                            value={userAnswer}
+                            onChange={(event) => setUserAnswer(event.target.value)}
+                            placeholder="Digite sua tradução..."
+                            disabled={answerLoading || remainingSeconds === 0}
+                            rows={4}
+                          />
 
                           <button
                             type="button"
                             className="match-action-button"
-                            onClick={generateRound}
-                            disabled={roundLoading}
+                            onClick={submitAnswer}
+                            disabled={
+                              answerLoading ||
+                              !userAnswer.trim() ||
+                              remainingSeconds === 0
+                            }
                           >
-                            {roundLoading ? 'Preparando desafio...' : 'Começar desafio'}
+                            {answerLoading ? 'Avaliando resposta...' : 'Enviar resposta'}
                           </button>
                         </>
-                      ) : (
-                        <div className="match-waiting">
-                          <span className="waiting-indicator" />
+                      )}
 
-                          <h2>Vez do adversário!</h2>
+                      {roundEvaluation && (
+                        <div className="round-result">
+                          <h2>
+                            {roundEvaluation.was_timeout
+                              ? 'Tempo esgotado! ⏱️'
+                              : roundEvaluation.is_correct
+                                ? 'Muito bem! 🎉'
+                                : 'Vamos aprender juntos!'}
+                          </h2>
 
-                          <p>
-                            Aguarde enquanto seu adversário responde.
-                            Assim que ele terminar, será sua vez novamente.
-                          </p>
+                          <div className="round-result-score">
+                            {roundEvaluation.score}/10
+                          </div>
+
+                          <p>{roundEvaluation.feedback}</p>
+
+                          <div>
+                            <strong>Sua resposta:</strong>
+                            <p>
+                              {roundEvaluation.was_timeout
+                                ? 'Você não enviou uma resposta a tempo.'
+                                : userAnswer}
+                            </p>
+                          </div>
+
+                          <div>
+                            <strong>Tradução corrigida:</strong>
+                            <p>{roundEvaluation.corrected_answer}</p>
+                          </div>
+
+                          <div>
+                            <strong>Explicação gramatical:</strong>
+                            <p>{roundEvaluation.grammar_explanation}</p>
+                          </div>
+
+                          {roundEvaluation.alternative_translations.length > 0 && (
+                            <div>
+                              <strong>Outras traduções possíveis:</strong>
+                              <ul>
+                                {roundEvaluation.alternative_translations.map(
+                                  (translation, index) => (
+                                    <li key={index}>{translation}</li>
+                                  )
+                                )}
+                              </ul>
+                            </div>
+                          )}
+
+                          {matchFinished ? (
+                            <h3>Partida finalizada! 🏆</h3>
+                          ) : roundCompleted ? (
+                            <div className="match-next-turn">
+                              <p>
+                                Os dois jogadores concluíram a rodada!
+                                A próxima já está liberada.
+                              </p>
+
+                              <button
+                                type="button"
+                                className="match-action-button"
+                                onClick={continueAfterEvaluation}
+                              >
+                                Continuar para próxima rodada
+                                <ArrowRight size={18} />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="match-waiting">
+                              <span className="waiting-indicator" />
+                              Aguardando o adversário concluir a rodada...
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
                   )}
-
                   {(activeRoundId || roundEvaluation) && (
                     <>
                       <p className="round-counter">
