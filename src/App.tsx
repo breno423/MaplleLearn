@@ -726,12 +726,36 @@ export default function App() {
 
     checkSession();
 
+    
+    let authTimeout: number | undefined;
+
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
 
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Aguarda o callback de autenticação terminar antes de consultar o perfil.
+        window.clearTimeout(authTimeout);
+
+        authTimeout = window.setTimeout(() => {
+          if (!mounted) return;
+
+          const user = session.user;
+
+          setCurrentUserId(user.id);
+          void loadUserProfile(user);
+
+          setScreen('rooms');
+          setNotice('');
+        }, 0);
+
+        return;
+      }
+
       if (event === 'SIGNED_OUT') {
+        window.clearTimeout(authTimeout);
+
         setCurrentUserId('');
         setActiveRoomId('');
         setActiveCode('');
@@ -747,6 +771,7 @@ export default function App() {
         });
 
         setProfileName('Jogador');
+        setProfileUsername('');
         setProfileMenuOpen(false);
         setScreen('login');
         setMode('login');
@@ -755,8 +780,10 @@ export default function App() {
 
     return () => {
       mounted = false;
+      window.clearTimeout(authTimeout);
       subscription.unsubscribe();
     };
+
   }, []);
 
   useEffect(() => {
