@@ -339,6 +339,72 @@ export default function App() {
     return () => clearInterval(interval);
   }, [screen, activeRoomId, currentUserId]);
 
+
+useEffect(() => {
+  if (screen !== 'match' || !activeRoomId || !currentUserId) {
+    return;
+  }
+
+  let cancelled = false;
+
+  async function loadActiveMatch() {
+    const { data: match, error } = await supabase
+      .from('matches')
+      .select(`
+        id,
+        player_one_id,
+        player_two_id,
+        player_one_language,
+        player_two_language,
+        current_round,
+        total_rounds,
+        response_deadline_at,
+        status
+      `)
+      .eq('room_id', activeRoomId)
+      .maybeSingle();
+
+    if (cancelled) return;
+
+    if (error || !match) {
+      console.error('Erro ao recuperar partida:', error);
+      return;
+    }
+
+    setActiveMatchId(match.id);
+
+    const isPlayerOne = match.player_one_id === currentUserId;
+
+    const myLanguage = isPlayerOne
+      ? match.player_one_language
+      : match.player_two_language;
+
+    const otherLanguage = isPlayerOne
+      ? match.player_two_language
+      : match.player_one_language;
+
+    setMatchLanguage(myLanguage);
+    setOpponentLanguage(otherLanguage);
+
+    setLanguagesReady(
+      Boolean(match.player_one_language && match.player_two_language)
+    );
+
+    setCurrentRound(match.current_round);
+    setTotalRounds(match.total_rounds);
+    setResponseDeadlineAt(match.response_deadline_at);
+    setRoundReady(Boolean(match.response_deadline_at));
+    setMatchFinished(match.status === 'completed');
+  }
+
+  loadActiveMatch();
+
+  return () => {
+    cancelled = true;
+  };
+}, [screen, activeRoomId, currentUserId]);
+
+
   useEffect(() => {
     if (
       screen !== 'match' ||
