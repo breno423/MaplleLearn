@@ -536,7 +536,13 @@ useEffect(() => {
       }
     }
 
-    loadRoundProgress();
+        // Primeira consulta imediata.
+    void loadRoundProgress();
+
+    // Atualiza o progresso mesmo se o Realtime falhar.
+    const progressInterval = window.setInterval(() => {
+      void loadRoundProgress();
+    }, 1500);
 
     const channel = supabase
       .channel(`match-progress-${activeMatchId}-${currentRound}`)
@@ -565,9 +571,10 @@ useEffect(() => {
       )
       .subscribe();
 
-    return () => {
+        return () => {
       cancelled = true;
-      supabase.removeChannel(channel);
+      window.clearInterval(progressInterval);
+      void supabase.removeChannel(channel);
     };
   }, [screen, activeMatchId, currentUserId, currentRound]);
 
@@ -598,8 +605,10 @@ useEffect(() => {
 
       setRemainingSeconds(seconds);
 
-      if (
+           if (
         seconds === 0 &&
+        !answerLoading &&
+        !roundEvaluation &&
         timeoutTriggeredRef.current !== timeoutKey
       ) {
         // Impede chamadas duplicadas para esta rodada.
@@ -637,11 +646,13 @@ useEffect(() => {
     const interval = window.setInterval(updateCountdown, 1000);
 
     return () => window.clearInterval(interval);
-  }, [
+    }, [
     screen,
     activeMatchId,
     currentRound,
     responseDeadlineAt,
+    answerLoading,
+    roundEvaluation,
   ]);
 
   useEffect(() => {
