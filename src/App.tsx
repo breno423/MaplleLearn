@@ -726,7 +726,7 @@ export default function App() {
 
     checkSession();
 
-    
+
     let authTimeout: number | undefined;
 
     const {
@@ -2194,7 +2194,20 @@ export default function App() {
 
             <div className="match-player-info">
               <div className="match-player">
-                <UserRound size={24} />
+                {members.find(
+                  (member) => member.user_id !== currentUserId
+                )?.avatar_url ? (
+                  <img
+                    src={
+                      members.find(
+                        (member) => member.user_id !== currentUserId
+                      )!.avatar_url!
+                    }
+                    alt="Avatar do adversário"
+                  />
+                ) : (
+                  <UserRound size={24} />
+                )}
 
                 <div>
                   <strong>
