@@ -326,7 +326,11 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (screen !== 'lobby' || !activeRoomId || !currentUserId) {
+    if (
+      (screen !== 'lobby' && screen !== 'match') ||
+      !activeRoomId ||
+      !currentUserId
+    ) {
       return;
     }
 
@@ -745,9 +749,6 @@ export default function App() {
 
           setCurrentUserId(user.id);
           void loadUserProfile(user);
-
-          setScreen('rooms');
-          setNotice('');
         }, 0);
 
         return;
@@ -1223,7 +1224,34 @@ export default function App() {
       return;
     }
 
-    setMembers(players || []);
+    const playerIds = (players || []).map(
+      (player: { user_id: string }) => player.user_id
+    );
+
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, display_name, avatar_url')
+      .in('id', playerIds);
+
+    if (profilesError) {
+      console.error('Erro ao carregar perfis dos jogadores:', profilesError);
+    }
+
+    const updatedPlayers = (players || []).map((player: any) => {
+      const playerProfile = profiles?.find(
+        (profile) => profile.id === player.user_id
+      );
+
+      return {
+        ...player,
+        display_name:
+          playerProfile?.display_name || player.display_name || 'Jogador',
+        avatar_url:
+          playerProfile?.avatar_url ?? player.avatar_url ?? null,
+      };
+    });
+
+    setMembers(updatedPlayers);
 
     const myMembership = (players || []).find(
       (player: {
