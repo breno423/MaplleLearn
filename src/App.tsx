@@ -9,6 +9,7 @@ import {
   Sparkles,
   Globe2,
   Plus,
+  Clock,
   Users,
   DoorOpen,
   Copy,
@@ -149,6 +150,54 @@ function Maplle() {
   );
 }
 
+function RoundTimer({
+  remaining,
+  total,
+}: {
+  remaining: number;
+  total: number;
+}) {
+  const minutes = Math.floor(remaining / 60);
+  const seconds = String(remaining % 60).padStart(2, '0');
+
+  const progress = Math.min(1, Math.max(0, remaining / total));
+  const state =
+    remaining <= 10 ? 'danger' : progress <= 0.4 ? 'warning' : 'safe';
+
+  const radius = 26;
+  const circumference = 2 * Math.PI * radius;
+
+  return (
+    <div
+      className={`round-timer is-${state}`}
+      role="timer"
+      aria-label={`Tempo restante: ${minutes} minutos e ${seconds} segundos`}
+    >
+      <div className="timer-clock">
+        <svg viewBox="0 0 64 64" aria-hidden="true">
+          <circle className="timer-ring-track" cx="32" cy="32" r={radius} />
+          <circle
+            className="timer-ring-progress"
+            cx="32"
+            cy="32"
+            r={radius}
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - progress)}
+          />
+        </svg>
+        <Clock size={22} />
+      </div>
+
+      <div className="timer-text">
+        <span>TEMPO RESTANTE</span>
+        <strong>
+          {minutes}:{seconds}
+        </strong>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -212,6 +261,10 @@ export default function App() {
   const [originalText, setOriginalText] = useState('');
   // Estado compartilhado da partida
   const [currentRound, setCurrentRound] = useState(0);
+  const timerTotalRef = useRef<{ key: string | null; total: number }>({
+    key: null,
+    total: 1,
+  });
   const [totalRounds, setTotalRounds] = useState(5);
   const [responseDeadlineAt, setResponseDeadlineAt] = useState<string | null>(null);
   const [roundReady, setRoundReady] = useState(false);
@@ -600,6 +653,13 @@ export default function App() {
     if (!Number.isFinite(deadline)) {
       console.error('Prazo da rodada inválido:', responseDeadlineAt);
       return;
+    }
+
+    if (timerTotalRef.current.key !== responseDeadlineAt) {
+      timerTotalRef.current = {
+        key: responseDeadlineAt,
+        total: Math.max(1, Math.ceil((deadline - Date.now()) / 1000)),
+      };
     }
 
     const timeoutKey = `${activeMatchId}:${currentRound}:${responseDeadlineAt}`;
@@ -2362,10 +2422,10 @@ export default function App() {
                       </p>
 
                       {remainingSeconds !== null && roundReady && (
-                        <p className="round-timer">
-                          Tempo restante: {Math.floor(remainingSeconds / 60)}:
-                          {String(remainingSeconds % 60).padStart(2, '0')}
-                        </p>
+                        <RoundTimer
+                          remaining={remainingSeconds}
+                          total={timerTotalRef.current.total}
+                        />
                       )}
 
                       <h2>Traduza a frase abaixo:</h2>

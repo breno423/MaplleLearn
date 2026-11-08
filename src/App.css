@@ -2045,6 +2045,131 @@ footer {
 }
 
 /* =====================================================
+   CRONÔMETRO DA RODADA
+===================================================== */
+
+.round-timer {
+  --timer-accent: var(--violet);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin: 6px auto 18px;
+  padding: 8px 24px 8px 10px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--timer-accent) 40%, transparent);
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--timer-accent) 18%, transparent), transparent 60%),
+    rgba(24, 16, 36, 0.7);
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--timer-accent) 20%, transparent),
+    inset 0 1px rgba(255, 255, 255, 0.06);
+  transition: border-color 0.4s, box-shadow 0.4s, background 0.4s;
+}
+
+.round-timer.is-safe {
+  --timer-accent: var(--lilac);
+}
+
+.round-timer.is-warning {
+  --timer-accent: var(--gold);
+}
+
+.round-timer.is-danger {
+  --timer-accent: var(--rose);
+  animation: timerPulse 1s ease-in-out infinite;
+}
+
+.timer-clock {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  color: var(--timer-accent);
+  transition: color 0.4s;
+}
+
+.timer-clock svg:first-child {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.timer-ring-track,
+.timer-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.timer-ring-track {
+  stroke: rgba(255, 255, 255, 0.09);
+}
+
+.timer-ring-progress {
+  stroke: var(--timer-accent);
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 5px var(--timer-accent));
+  transition: stroke-dashoffset 1s linear, stroke 0.4s;
+}
+
+.round-timer.is-danger .timer-clock > svg:last-child {
+  animation: clockShake 1s ease-in-out infinite;
+}
+
+.timer-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.timer-text span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+
+.timer-text strong {
+  color: var(--text);
+  font: 800 30px / 1 var(--font-display);
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.round-timer.is-danger .timer-text strong {
+  color: var(--rose);
+}
+
+@keyframes timerPulse {
+  0%, 100% {
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--timer-accent) 20%, transparent);
+  }
+  50% {
+    box-shadow: 0 10px 38px color-mix(in srgb, var(--timer-accent) 48%, transparent);
+  }
+}
+
+@keyframes clockShake {
+  0%, 100% { transform: rotate(0); }
+  25% { transform: rotate(-9deg); }
+  75% { transform: rotate(9deg); }
+}
+
+@media (max-width: 420px) {
+  .round-timer {
+    padding-right: 18px;
+  }
+  .timer-text strong {
+    font-size: 26px;
+  }
+}
+
+/* =====================================================
    MOVIMENTO REDUZIDO
 ===================================================== */
 
