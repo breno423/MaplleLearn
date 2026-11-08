@@ -8,7 +8,8 @@ import './index.css';
 
 try {
   const config: AwsRumConfig = {
-    sessionSampleRate: 0.2,
+    sessionSampleRate: 1,
+    debug: true,
     identityPoolId: 'sa-east-1:0d310714-ba61-464f-b1b7-c3d814282c4c',
     endpoint: 'https://dataplane.rum.sa-east-1.amazonaws.com',
     telemetries: ['performance', 'errors', 'http'],
