@@ -1,228 +1,289 @@
+::: {align="center"}
 # 🔮 Maplle Learn
 
 ### Aprenda francês. Conecte-se. Evolua jogando.
 
-<p align="center">
-  <strong>Uma nova maneira de aprender francês por meio de uma experiência interativa, social e gamificada.</strong>
-</p>
+Uma plataforma multiplayer de aprendizagem de idiomas que transforma a
+prática de francês e inglês em uma experiência social, competitiva e
+gamificada.
 
-<p align="center">
-  <img src="https://img.shields.io/badge/Status-Em%20desenvolvimento-A78BFA?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
-  <img src="https://img.shields.io/badge/Backend-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" />
-  <img src="https://img.shields.io/badge/AWS-Observabilidade%20planejada-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white" />
-</p>
+[![React](https://img.shields.io/badge/React-19-149ECA?logo=react&logoColor=white)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-Frontend-646CFF?logo=vite&logoColor=white)](https://vite.dev/)
+[![Supabase](https://img.shields.io/badge/Supabase-Backend-3FCF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+[![Gemini](https://img.shields.io/badge/Google-Gemini-8E75B2?logo=googlegemini&logoColor=white)](https://ai.google.dev/)
+[![AWS CloudWatch
+RUM](https://img.shields.io/badge/AWS-CloudWatch%20RUM-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/cloudwatch/)
+[![Vercel](https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white)](https://vercel.com/)
 
----
+[Aplicação em produção](https://maplle-learn.vercel.app/) · [Arquitetura
+(Draw.io)](docs/maplle-architecture.drawio)
+:::✨ Sobre o projeto
+O Maplle Learn é uma plataforma de aprendizagem de idiomas
+construída em torno de partidas entre duas pessoas. Em vez de depender
+apenas de exercícios individuais, os participantes praticam tradução,
+recebem feedback e acompanham sua evolução em uma experiência
+multiplayer.
 
-## 🌟 Sobre o projeto
+O mascote Maplle, uma bola de cristal caracterizada, representa a
+identidade do produto e atua como guia visual da experiência.
 
-O **Maplle Learn** é uma plataforma de aprendizagem de francês que busca tornar o processo de estudo mais dinâmico, envolvente e colaborativo.
-
-A proposta é combinar aprendizado de idiomas com elementos de gamificação e interação entre usuários, criando um ambiente no qual aprender francês também seja uma experiência social.
-
-A plataforma conta com **Maplle**, seu mascote e guia virtual, que representa a identidade do projeto e acompanha a experiência de aprendizagem.
-
-## 🎯 Objetivos
-
-- Tornar o aprendizado de francês mais acessível e interativo.
-- Incentivar a prática por meio de experiências gamificadas.
-- Promover a interação e a aprendizagem colaborativa.
-- Criar uma experiência visual intuitiva e consistente.
-- Desenvolver uma plataforma com estrutura preparada para novas funcionalidades.
-- Planejar recursos de observabilidade para acompanhar o desempenho e a confiabilidade da aplicação.
-
-## 🚀 Funcionalidades
-
-### 🔐 Autenticação
-
+O projeto combina:
+- aprendizagem de francês e inglês a partir de frases em português;
+- partidas privadas para duas pessoas;
+- geração e avaliação de desafios com IA;
+- pontuação, tempo de resposta e feedback individual;
+- autenticação, perfis, amizades e sincronização em tempo real;
+- monitoramento de experiência real no frontend com AWS CloudWatch
+  RUM.
+🎯 Objetivos
+- Tornar a prática de idiomas mais interativa e acessível.
+- Incentivar a consistência por meio de partidas e gamificação.
+- Promover aprendizagem colaborativa entre amigos.
+- Usar IA para gerar desafios e oferecer feedback contextualizado.
+- Manter uma arquitetura segura, observável e preparada para evoluir.
+🚀 Funcionalidades
+🔐 Autenticação e perfil
 - Cadastro e login com e-mail e senha.
-- Autenticação com Google.
-- Autenticação com GitHub.
+- Autenticação social com Google e GitHub.
 - Gerenciamento de sessão com Supabase Auth.
+- Perfil com nome de exibição, nome de usuário e avatar.
+👥 Salas e amizades
+- Criação de salas privadas para até duas pessoas.
+- Código de sala para compartilhamento e entrada.
+- Convites de amigos e gerenciamento de amizades.
+- Estado de prontidão dos participantes.
+- Configurações de partida definidas pelo anfitrião.
+- Sincronização de participantes e estado da sala.
+🎮 Partidas multiplayer
+- Partidas com respostas simultâneas: cada jogador recebe seu próprio
+  desafio.
+- Frases de origem em português, com idioma-alvo escolhido pelo
+  participante (francês ou inglês).
+- Quantidade de rodadas e tempo de resposta configuráveis.
+- Avaliação individual das respostas com IA.
+- Pontuação de 0 a 10, correções, explicações gramaticais e traduções
+  alternativas.
+- Controle de tempo, tratamento de respostas expiradas e desistência.
+- Resultado final com comparação das pontuações.
+🤖 Inteligência artificial
+- Geração de desafios com Google Gemini.
+- Avaliação de respostas e feedback em português brasileiro.
+- Orientações de correção e alternativas de tradução.
+- Estrutura preparada para adaptação gradual da dificuldade.
+🎨 Experiência visual
+- Interface própria com identidade visual em tons de roxo.
+- Layout responsivo.
+- Mascote Maplle integrado à experiência.
+- Ícones com Lucide React.
+🧰 Tecnologias
+  Tecnologia                          Responsabilidade
+  React + TypeScript                  Interface e lógica do frontend
 
-### 🎮 Salas multiplayer
+  Vite                                Desenvolvimento e build do frontend
 
-- Criação de salas privadas.
-- Geração de códigos para compartilhamento.
-- Entrada em salas por código.
-- Identificação dos participantes.
-- Sistema de status de prontidão (*Ready*).
-- Controle de início da partida pelo anfitrião.
-- Atualização dos dados das salas em tempo real.
+  CSS                                 Estilização e identidade visual
 
-### 🎨 Experiência visual
+  Supabase Auth                       Autenticação e sessões
 
-- Interface desenvolvida com identidade visual própria.
-- Design responsivo e experiência intuitiva.
-- Mascote Maplle integrado à identidade da plataforma.
-- Elementos visuais inspirados em jogos e ambientes de aprendizagem.
+  Supabase PostgreSQL                 Persistência dos dados
 
-## 🛠️ Tecnologias utilizadas
+  Supabase RLS                        Controle de acesso aos dados
 
-| Tecnologia | Aplicação |
-|---|---|
-| React | Construção da interface |
-| TypeScript | Tipagem e segurança no desenvolvimento |
-| Vite | Ambiente de desenvolvimento e build |
-| CSS | Estilização e identidade visual |
-| Supabase | Backend como serviço (BaaS) |
-| Supabase Auth | Autenticação de usuários |
-| PostgreSQL | Banco de dados |
-| Supabase Realtime | Atualização de informações em tempo real |
-| Lucide React | Biblioteca de ícones |
-| AWS CloudWatch | Monitoramento de logs e métricas — integração planejada |
-| AWS X-Ray | Rastreamento distribuído de requisições — integração planejada |
+  Supabase Realtime                   Sincronização de salas e partidas
 
-## 🏗️ Arquitetura
+  Supabase Edge Functions             Operações de backend e integração
+com IA
 
-O projeto utiliza uma arquitetura baseada em frontend e serviços gerenciados pelo Supabase. Como parte da evolução da infraestrutura, está prevista a integração com serviços da AWS para observabilidade e monitoramento.
+  Supabase RPC                        Operações transacionais e regras de
+negócio no banco
 
-```mermaid
-flowchart TD
-    A[Usuário] --> B[React + TypeScript]
-    B --> C[Interface Maplle Learn]
-    C --> D[Supabase Client]
+  Google Gemini                       Geração de desafios e avaliação de
+respostas
 
-    D --> E[Supabase Auth]
-    D --> F[PostgreSQL]
-    D --> G[Supabase Realtime]
+  AWS CloudWatch RUM                  Telemetria de experiência real no
+frontend
 
-    F --> H[Salas e participantes]
-    G --> I[Atualização em tempo real]
+  Amazon Cognito Identity Pool        Credenciais temporárias para envio
+de eventos RUM
 
-    C -.-> J[Observabilidade planejada]
-    J -.-> K[AWS CloudWatch]
-    J -.-> L[AWS X-Ray]
-```
+  Vercel                              Hospedagem e deploy do frontend
+Lucide React                        Ícones da interface
+🏗️ Arquitetura
+O frontend é uma aplicação React/Vite hospedada na Vercel. O Supabase
+fornece autenticação, banco de dados, políticas RLS, Realtime e Edge
+Functions. As Edge Functions coordenam a geração e a avaliação dos
+desafios com o Google Gemini.
 
-### Banco de dados
+O CloudWatch RUM é integrado diretamente ao frontend para coletar
+telemetria de sessões reais. Ele monitora a experiência no navegador;
+não centraliza automaticamente os logs internos do Supabase.
+Diagrama de arquitetura
+O diagrama abaixo mostra os principais componentes e o fluxo de uma
+partida. O arquivo fonte pode ser aberto e editado no draw.io /
+diagrams.net.
 
-Entre as principais estruturas utilizadas estão:
+- [Abrir/editar o diagrama no
+  Draw.io](docs/maplle-architecture.drawio)
 
-- `profiles`: informações de perfil dos usuários.
-- `rooms`: dados e estado das salas.
-- `room_members`: participantes e status de prontidão.
+Fluxo resumido de uma partida
+1. O usuário acessa a aplicação hospedada na Vercel e autentica-se pelo
+   Supabase Auth.
+2. Os participantes criam ou entram em uma sala e ficam sincronizados
+   pelo Supabase Realtime.
+3. O anfitrião configura a partida e inicia quando os dois jogadores
+   estão prontos.
+4. As Edge Functions geram um desafio individual para cada jogador,
+   usando o Gemini.
+5. Cada participante envia sua tradução; a função de avaliação valida a
+   partida e solicita a avaliação ao Gemini.
+6. As respostas, pontuações e feedbacks são persistidos no Supabase e
+   sincronizados entre os participantes.
+7. Respostas expiradas são tratadas pelo fluxo de timeout; ao final, o
+   resultado da partida é calculado.
+📊 Observabilidade
+AWS CloudWatch RUM --- implementado
+O frontend do Maplle Learn utiliza o Amazon CloudWatch Real User
+Monitoring (RUM) para acompanhar a experiência de usuários reais na
+aplicação publicada na Vercel.
 
-A aplicação utiliza políticas de segurança em nível de linha (**Row Level Security — RLS**) e funções RPC para controlar operações importantes, como criação, entrada e gerenciamento de salas.
+  Configuração            Estado
+  App monitor             maplle-learn-prod
+Região AWS              sa-east-1 --- São Paulo
+Amostragem de sessões   20%
+Performance telemetry   Ativada
+JavaScript errors       Ativada
+HTTP errors             Ativada
+X-Ray tracing           Desativado
+Cookies do RUM          Desativados
+Autorização             Cognito Identity Pool com credenciais temporárias
 
-## 📊 Observabilidade e monitoramento
+O RUM permite observar sessões amostradas, visualizações de página,
+indicadores de desempenho e erros capturados no navegador. A
+configuração usa o pacote aws-rum-web.
+Escopo atual: CloudWatch RUM monitora o frontend e as requisições
+observadas pelo navegador. Logs de execução das Supabase Edge
+Functions, Auth e banco de dados continuam disponíveis nos recursos de
+observabilidade do próprio Supabase. A exportação desses logs para a
+AWS não está configurada neste estágio.
 
-Como parte da evolução da infraestrutura do Maplle Learn, está planejada a integração com serviços da **Amazon Web Services (AWS)** voltados à observabilidade da aplicação.
+Próximas evoluções de observabilidade
+- AWS Budgets para alertas de custo.
+- CloudWatch Synthetics para verificações automatizadas de
+  disponibilidade e fluxos críticos.
+- CloudTrail para auditoria das atividades da conta AWS.
+- Avaliar integração de logs do Supabase com um destino AWS,
+  considerando plano, custos e segurança.
+- Avaliar rastreamento distribuído quando houver uma arquitetura
+  compatível com X-Ray.
+🗃️ Dados e segurança
+Entre as principais estruturas do banco estão:
+  Estrutura                           Finalidade
+  profiles                          Dados públicos de perfil, como
+nome, username e avatar
 
-O objetivo é ampliar a capacidade de acompanhar o comportamento do sistema, identificar possíveis falhas e analisar o desempenho da aplicação.
+  rooms                             Salas, anfitrião, configurações e
+estado
 
-### Serviços planejados
+  room_members                      Participantes e estado de prontidão
 
-| Serviço | Finalidade |
-|---|---|
-| AWS CloudWatch | Centralização e monitoramento de logs, métricas e alarmes. |
-| AWS X-Ray | Rastreamento distribuído de requisições e análise de latência. |
+  matches                           Estado e configurações das partidas
 
-### Objetivos da integração
+  match_rounds                      Desafios individuais de cada
+participante
 
-- Monitorar o funcionamento da aplicação.
-- Facilitar a identificação e análise de erros.
-- Acompanhar métricas de desempenho.
-- Melhorar a visibilidade sobre o comportamento do sistema.
-- Identificar possíveis gargalos durante a execução.
-- Criar uma base para futuras melhorias de confiabilidade e escalabilidade.
-
-**Status da integração:** Planejada. Os serviços AWS ainda não foram implementados no projeto.
-
-## ⚙️ Como executar o projeto
-
-### 1. Pré-requisitos
-
-- Node.js
+  match_answers                     Respostas, pontuações e feedbacks
+match_round_keys                  Referências e guias usados na
+avaliação, protegidos do acesso
+comum do cliente
+A aplicação utiliza:
+- Row Level Security (RLS) para restringir o acesso aos dados.
+- Supabase Auth para identificar os usuários.
+- RPCs para executar operações sensíveis e transacionais.
+- Edge Functions para operações de backend e chamadas à IA.
+- Variáveis de ambiente para configuração do cliente.
+- Credenciais temporárias do Cognito para envio de telemetria RUM.
+Nunca exponha service_role, chaves privadas do Gemini, credenciais
+IAM permanentes ou outros segredos no código do frontend, no repositório
+ou em variáveis VITE_*.
+⚙️ Executar localmente
+Pré-requisitos
+- Node.js (versão LTS recomendada)
 - npm
 - Git
-- Projeto configurado no Supabase
-
-### 2. Clone o repositório
-
-```bash
+- Projeto Supabase configurado e acessível
+1. Clonar o repositório
 git clone URL_DO_REPOSITORIO
 cd maplle-learn
-```
-
-### 3. Instale as dependências
-
-```bash
+2. Instalar dependências
 npm install
-```
-
-### 4. Configure as variáveis de ambiente
-
-Crie um arquivo `.env` na raiz do projeto:
-
-```env
+3. Configurar variáveis de ambiente
+Crie um arquivo .env na raiz do projeto:
 VITE_SUPABASE_URL=sua_url_do_supabase
-VITE_SUPABASE_ANON_KEY=sua_chave_publishable
-```
+VITE_SUPABASE_ANON_KEY=sua_chave_publica
+Use a chave pública apropriada do Supabase no frontend. Nunca coloque a
+chave service_role ou segredos de servidor em variáveis VITE_*.
 
-> Utilize somente a chave pública `publishable` no frontend. Nunca exponha chaves secretas ou `service_role`.
-
-### 5. Execute a aplicação
-
-```bash
+As credenciais do Gemini e do Supabase usadas pelas Edge Functions devem
+permanecer configuradas no ambiente seguro do Supabase, conforme a
+implementação do projeto.
+4. Iniciar o ambiente de desenvolvimento
 npm run dev
-```
-
-A aplicação estará disponível no endereço local informado pelo Vite, normalmente:
-
-```text
-http://localhost:5173
-```
-
-### 6. Gere a versão de produção
-
-```bash
+O Vite exibirá o endereço local, normalmente http://localhost:5173.
+5. Validar o build de produção
 npm run build
-```
+☁️ Deploy
+O frontend está publicado na Vercel:
 
-## 🔒 Segurança
+https://maplle-learn.vercel.app/
 
-O Maplle Learn utiliza recursos de segurança do Supabase para proteger os dados e controlar o acesso às funcionalidades.
+O deploy é realizado a partir do repositório conectado à Vercel. As
+variáveis de ambiente necessárias devem ser cadastradas nas
+configurações do projeto na plataforma.
 
-- Row Level Security (RLS).
-- Controle de acesso baseado na autenticação.
-- Funções RPC para operações controladas no banco.
-- Variáveis de ambiente para configuração do cliente.
-- Separação entre dados públicos e informações restritas dos usuários.
+As Supabase Edge Functions e alterações de banco são implantadas e
+gerenciadas no projeto Supabase.
+🗺️ Roadmap
+Implementado
+- [x] Estrutura inicial com React, TypeScript e Vite.
+- [x] Identidade visual e mascote Maplle.
+- [x] Autenticação por e-mail e provedores sociais.
+- [x] Perfis com avatar e username.
+- [x] Criação e entrada em salas privadas.
+- [x] Salas para dois participantes e estado de prontidão.
+- [x] Configuração de rodadas e tempo de resposta.
+- [x] Partidas com desafios individuais e respostas simultâneas.
+- [x] Geração de desafios com Gemini.
+- [x] Avaliação com pontuação e feedback.
+- [x] Persistência e sincronização de progresso da partida.
+- [x] Tratamento de timeout e desistência.
+- [x] Sistema de amizades e convites.
+- [x] Deploy do frontend na Vercel.
+- [x] Integração do AWS CloudWatch RUM em sa-east-1.
+Próximos passos
+- [ ] Evoluir métricas e alertas de observabilidade.
+- [ ] Configurar AWS Budgets.
+- [ ] Adicionar testes sintéticos para disponibilidade e fluxos
+  críticos.
+- [ ] Avaliar exportação de logs do Supabase para uma plataforma
+  externa.
+- [ ] Desenvolver chat entre amigos.
+- [ ] Criar desafios diários gerados por IA.
+- [ ] Evoluir progressão, histórico e estatísticas dos jogadores.
+- [ ] Avaliar rastreamento distribuído com AWS X-Ray conforme a
+  arquitetura evoluir.
+💡 Visão do projeto
+O Maplle Learn nasceu da ideia de que aprender um idioma não precisa ser
+uma atividade solitária ou repetitiva. Ao aproximar pessoas, desafios e
+inteligência artificial, o projeto busca transformar a prática em uma
+experiência compartilhada e motivadora.
 
-## 🗺️ Roadmap
+A evolução técnica também faz parte da proposta: construir uma aplicação
+com autenticação, regras de acesso, operações de backend, sincronização
+em tempo real, deploy contínuo e observabilidade desde as etapas
+iniciais.
+::: {align="center"}
+**Maplle Learn**
 
-- [x] Estrutura inicial da aplicação.
-- [x] Interface de autenticação.
-- [x] Integração com Supabase.
-- [x] Autenticação por e-mail, Google e GitHub.
-- [x] Criação e entrada em salas.
-- [x] Gerenciamento de participantes.
-- [x] Sistema de prontidão.
-- [x] Sincronização de salas em tempo real.
-- [x] Desenvolvimento das experiências de aprendizagem.
-- [x] Implementação de desafios e atividades em francês.
-- [x] Sistema de pontuação e progressão.
-- [ ] Expansão dos recursos de gamificação.
-- [ ] Planejamento da integração com AWS.
-- [ ] Implementação do AWS CloudWatch para observabilidade.
-- [ ] Implementação do AWS X-Ray para rastreamento distribuído.
-- [ ] Configuração de métricas, logs e monitoramento.
-- [ ] Sistema de amizades(chat + invites).
-- [ ] Desafios diários gerados pela IA.
-
-## 💡 Visão do projeto
-
-O Maplle Learn nasceu da ideia de que aprender um novo idioma não precisa ser uma atividade solitária ou repetitiva.
-
-Queremos transformar o aprendizado de francês em uma jornada mais interativa, colaborativa e divertida, aproximando tecnologia, educação e gamificação.
-
-Além da experiência de aprendizagem, o projeto busca evoluir sua arquitetura e infraestrutura, incorporando práticas de segurança, monitoramento e observabilidade para apoiar seu crescimento.
-
----
-
-<p align="center">
-  <strong>Maplle Learn</strong><br/>
-  <em>Learn together. Grow together. Parlez français!</em>
-</p>
+*Learn together. Grow together. Parlez français!*
+:::
