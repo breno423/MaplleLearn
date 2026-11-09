@@ -9,7 +9,7 @@ Uma plataforma **multiplayer** de aprendizagem de idiomas que transforma a prát
 <br />
 
 [![Ver aplicação](https://img.shields.io/badge/▶_Ver_aplicação-maplle--learn.vercel.app-8B5CF6?style=for-the-badge&logo=vercel&logoColor=white)](https://maplle-learn.vercel.app/)
-[![Arquitetura](https://img.shields.io/badge/🏗️_Arquitetura-draw.io-F08705?style=for-the-badge&logo=diagramsdotnet&logoColor=white)](docs/maplle-architecture.drawio)
+[![Arquitetura](https://img.shields.io/badge/🏗️_Arquitetura-draw.io-F08705?style=for-the-badge&logo=diagramsdotnet&logoColor=white)](docs/maplle-architecture.drawio.jpeg)
 
 <br />
 
