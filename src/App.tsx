@@ -7,6 +7,7 @@ import {
   Mail,
   LockKeyhole,
   Sparkles,
+  Lightbulb,
   Globe2,
   Plus,
   Clock,
@@ -273,6 +274,14 @@ export default function App() {
   const [userAnswer, setUserAnswer] = useState('');
   const [roundLoading, setRoundLoading] = useState(false);
   const [answerLoading, setAnswerLoading] = useState(false);
+  /* MAPLLE_AI_HINTS */
+  const [hintPanelOpen, setHintPanelOpen] = useState(false);
+  const [hintLoading, setHintLoading] = useState(false);
+  const [hintData, setHintData] = useState<{
+    level: 'simple' | 'medium' | 'extreme';
+    penalty_points: number;
+    hint_text: string;
+  } | null>(null);
   const [myScore, setMyScore] = useState(0);
   const [opponentScore, setOpponentScore] = useState(0);
   const [roundCompleted, setRoundCompleted] = useState(false);
@@ -535,34 +544,17 @@ export default function App() {
 
       if (cancelled || !data) return;
 
-      // Atualiza as pontuações acumuladas da partida.
-      const { data: allAnswers, error: scoreError } = await supabase
-        .from('match_answers')
-        .select(`
-        player_id,
-        score,
-        match_rounds!inner (
-          match_id
-        )
-      `)
-        .eq('match_rounds.match_id', activeMatchId);
+      // O banco soma respostas e subtrai dicas dos dois participantes.
+      const { data: scores, error: scoreError } = await supabase.rpc(
+        'get_match_scores', { p_match_id: activeMatchId }
+      );
 
       if (scoreError) {
-        console.error('Erro ao atualizar pontuação:', scoreError);
-      } else if (!cancelled && allAnswers) {
-        let ownTotal = 0;
-        let opponentTotal = 0;
-
-        allAnswers.forEach((answer) => {
-          if (answer.player_id === currentUserId) {
-            ownTotal += answer.score;
-          } else {
-            opponentTotal += answer.score;
-          }
-        });
-
-        setMyScore(ownTotal);
-        setOpponentScore(opponentTotal);
+        console.error('Erro ao atualizar pontuação com dicas:', scoreError);
+      } else if (!cancelled && scores) {
+        const isPlayerOne = scores.player_one_id === currentUserId;
+        setMyScore(Number(isPlayerOne ? scores.player_one_score : scores.player_two_score));
+        setOpponentScore(Number(isPlayerOne ? scores.player_two_score : scores.player_one_score));
       }
 
       if (cancelled) return;
@@ -949,6 +941,27 @@ export default function App() {
     }
   }
 
+  // Recarrega a dica ao atualizar a página; o texto é privado do jogador.
+  useEffect(() => {
+    let cancelled = false;
+    setHintData(null);
+    setHintPanelOpen(false);
+    if (screen !== 'match' || !activeRoundId || !currentUserId) return;
+
+    async function restoreHint() {
+      const { data, error } = await supabase
+        .from('match_round_hints')
+        .select('level, penalty_points, hint_text')
+        .eq('round_id', activeRoundId)
+        .eq('player_id', currentUserId)
+        .maybeSingle();
+      if (error) console.error('Erro ao restaurar dica:', error);
+      if (!cancelled && data) setHintData(data);
+    }
+    void restoreHint();
+    return () => { cancelled = true; };
+  }, [screen, activeRoundId, currentUserId]);
+
   async function generateRound() {
     if (!activeMatchId || roundLoading || matchFinished) return;
 
@@ -956,6 +969,8 @@ export default function App() {
     setNotice('');
     setRoundCompleted(false);
     setRoundEvaluation(null);
+    setHintData(null);
+    setHintPanelOpen(false);
     setUserAnswer('');
     setActiveRoundId('');
     setOriginalText('');
@@ -1080,6 +1095,43 @@ export default function App() {
     }
   }
 
+
+  async function requestHint(level: 'simple' | 'medium' | 'extreme') {
+    if (
+      !activeMatchId || !activeRoundId || !roundReady ||
+      roundEvaluation || hintData || hintLoading || answerLoading ||
+      remainingSeconds === null || remainingSeconds <= 0
+    ) return;
+
+    setHintLoading(true);
+    setNotice('');
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-hint', {
+        body: { match_id: activeMatchId, round_id: activeRoundId, level },
+      });
+      if (error) {
+        const response = (error as any).context;
+        const details = response instanceof Response
+          ? await response.clone().json().catch(() => null)
+          : null;
+        throw new Error(details?.error || 'Não foi possível gerar a dica.');
+      }
+      if (!data?.success || !data.hint_text || !data.penalty_points) {
+        throw new Error('Resposta de dica inválida.');
+      }
+      setHintData({
+        level: data.level,
+        penalty_points: data.penalty_points,
+        hint_text: data.hint_text,
+      });
+      setHintPanelOpen(false);
+      // O polling de get_match_scores atualiza o placar para os dois jogadores.
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Erro ao solicitar dica.');
+    } finally {
+      setHintLoading(false);
+    }
+  }
 
   async function saveProfile() {
     if (!currentUserId) return;
@@ -2434,6 +2486,49 @@ export default function App() {
                         {originalText}
                       </div>
 
+                      {roundReady && !roundEvaluation && (
+                        <div className="hint-module">
+                          <button
+                            type="button"
+                            className="hint-trigger"
+                            aria-expanded={hintPanelOpen}
+                            onClick={() => setHintPanelOpen((open) => !open)}
+                            disabled={hintLoading || answerLoading || remainingSeconds === 0 || Boolean(hintData)}
+                          >
+                            <Lightbulb size={19} />
+                            {hintLoading ? 'Gerando dica com IA...' : hintData ? 'Dica já utilizada' : 'Preciso de uma dica da IA'}
+                            {!hintData && <ChevronDown size={17} />}
+                          </button>
+
+                          {hintData ? (
+                            <div className="hint-message" role="status">
+                              <strong>Dica da IA</strong>
+                              <p>{hintData.hint_text}</p>
+                              <small>−{hintData.penalty_points} {hintData.penalty_points === 1 ? 'ponto' : 'pontos'} no placar</small>
+                            </div>
+                          ) : hintPanelOpen ? (
+                            <div className="hint-options">
+                              <button type="button" onClick={() => void requestHint('simple')} disabled={hintLoading}>
+                                <strong>💡 Simples</strong>
+                                <span>Uma orientação leve</span>
+                                <small>−1 ponto</small>
+                              </button>
+                              <button type="button" onClick={() => void requestHint('medium')} disabled={hintLoading}>
+                                <strong>🧠 Média</strong>
+                                <span>Vocabulário ou gramática</span>
+                                <small>−3 pontos</small>
+                              </button>
+                              <button type="button" onClick={() => void requestHint('extreme')} disabled={hintLoading}>
+                                <strong>✨ Extrema</strong>
+                                <span>Ajuda bem detalhada</span>
+                                <small>−5 pontos</small>
+                              </button>
+                              <p>Uma dica por rodada. O desconto é aplicado quando a dica é gerada.</p>
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
                       {!roundReady && !roundEvaluation && (
                         <div className="match-waiting">
                           <span className="waiting-indicator" />
@@ -2451,7 +2546,7 @@ export default function App() {
                             value={userAnswer}
                             onChange={(event) => setUserAnswer(event.target.value)}
                             placeholder="Digite sua tradução..."
-                            disabled={answerLoading || remainingSeconds === 0}
+                            disabled={answerLoading || hintLoading || remainingSeconds === 0}
                             rows={4}
                           />
 
@@ -2461,6 +2556,7 @@ export default function App() {
                             onClick={submitAnswer}
                             disabled={
                               answerLoading ||
+                              hintLoading ||
                               !userAnswer.trim() ||
                               remainingSeconds === 0
                             }
@@ -2483,6 +2579,11 @@ export default function App() {
                           <div className="round-result-score">
                             {roundEvaluation.score}/10
                           </div>
+                          {hintData && (
+                            <p className="hint-penalty-note">
+                              Dica usada nesta rodada: −{hintData.penalty_points} pontos no placar total.
+                            </p>
+                          )}
 
                           <p>{roundEvaluation.feedback}</p>
 
