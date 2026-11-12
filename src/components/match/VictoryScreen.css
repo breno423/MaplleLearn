@@ -1,36 +1,92 @@
+/* Fundo escurecido da tela */
 .victory-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(17, 16, 25, 0.85); /* Tom escuro inspirado no gradient do Maplle */
-  backdrop-filter: blur(8px);
+  background: rgba(10, 8, 18, 0.75);
+  backdrop-filter: blur(12px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 9999;
   padding: 24px;
+  overflow: hidden;
 }
 
-.victory-card {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 48px 32px 32px;
+/* Wrapper que alinha o card e a órbita no centro */
+.victory-card-wrapper {
+  position: relative;
   width: 100%;
-  max-width: 440px;
+  max-width: 420px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* =========================================
+   SISTEMA DE ÓRBITA DO MAPLLE
+========================================= */
+.orbit-system {
+  position: absolute;
+  width: 135%; /* Maior que o card para circular por fora */
+  aspect-ratio: 1 / 1; /* Força a ser um círculo perfeito */
+  border-radius: 50%;
+  border: 1px dashed rgba(169, 139, 232, 0.2); /* Rastro sutil da órbita */
+  animation: orbitRotate 15s linear infinite;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Gira no sentido contrário para o mascote não ficar de cabeça para baixo */
+.orbit-rotation-fix {
+  position: absolute;
+  top: -45px; /* Ajusta a posição no trilho */
+  left: calc(50% - 45px); /* Centraliza no topo do anel */
+  width: 90px;
+  height: 90px;
+  animation: orbitCounterRotate 15s linear infinite;
+}
+
+/* Adiciona um flutuar suave enquanto ele orbita */
+.orbit-bounce {
+  width: 100%;
+  height: 100%;
+  animation: bounceFloat 3s ease-in-out infinite;
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.4));
+}
+
+.orbit-bounce svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes orbitRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes orbitCounterRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+
+/* =========================================
+   ESTILO MODERNO DO CARD (Glassmorphism)
+========================================= */
+.victory-card {
+  background: linear-gradient(145deg, rgba(35, 25, 50, 0.8), rgba(20, 15, 30, 0.9));
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(169, 139, 232, 0.3);
+  border-top: 1px solid rgba(216, 195, 255, 0.5);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 0 40px rgba(101, 70, 157, 0.2);
+  border-radius: 28px;
+  padding: 48px 32px 40px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   text-align: center;
   position: relative;
-  color: #111019;
-}
-
-.victory-mascot-container {
-  width: 140px;
-  height: 140px;
-  margin-top: -100px;
-  margin-bottom: 16px;
-  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+  z-index: 10; /* Fica abaixo do Maplle */
 }
 
 .victory-eyebrow {
@@ -38,40 +94,55 @@
   align-items: center;
   gap: 6px;
   font-size: 0.8rem;
-  font-weight: 700;
-  color: #65469d;
-  margin-bottom: 8px;
-  letter-spacing: 1px;
+  font-weight: 800;
+  color: #d8c3ff;
+  margin-bottom: 12px;
+  letter-spacing: 1.5px;
 }
 
 .victory-title {
-  font-size: 2.2rem;
-  margin: 0 0 8px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
+  font-size: 2.4rem;
+  margin: 0 0 12px;
+  font-weight: 900;
+  letter-spacing: -1px;
 }
 
-.text-win { color: #397c63; } /* Verde vitória */
-.text-tie { color: #a98be8; } /* Roxo empate */
-.text-loss { color: #e53e3e; } /* Vermelho derrota */
+/* Textos com degradê neon */
+.text-win {
+  background: linear-gradient(to right, #48bb78, #81e6d9);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.text-tie {
+  background: linear-gradient(to right, #a98be8, #e7d9ff);
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.text-loss {
+  background: linear-gradient(to right, #fc8181, #fbd38d);
+  -webkit-background-clip: text;
+  color: transparent;
+}
 
 .victory-subtitle {
-  color: #4a5568;
+  color: #a0aec0;
   margin-bottom: 32px;
   font-size: 1.05rem;
   line-height: 1.5;
 }
 
+/* Placar Escuro e Elegante */
 .victory-scoreboard {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  background: #f8f9fa;
-  border-radius: 16px;
-  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 20px;
+  padding: 20px 24px;
   margin-bottom: 32px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 4px 6px rgba(0,0,0,0.3);
 }
 
 .score-box {
@@ -79,29 +150,32 @@
   flex-direction: column;
   align-items: center;
   flex: 1;
-  gap: 4px;
+  gap: 6px;
 }
 
 .score-label {
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #718096;
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
 
 .score-value {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: #2d3748;
+  font-size: 2.8rem;
+  font-weight: 900;
+  color: #e2e8f0;
+  line-height: 1;
+  text-shadow: 0 4px 10px rgba(0,0,0,0.5);
 }
 
 .score-winner .score-value {
-  color: #65469d; /* Roxo principal do tema */
+  color: #e7d9ff;
+  text-shadow: 0 0 20px rgba(169, 139, 232, 0.6);
 }
 
 .score-divider {
-  font-weight: 800;
-  color: #cbd5e0;
+  font-weight: 900;
+  color: #4a5568;
   font-size: 1.2rem;
   padding: 0 16px;
 }
@@ -109,23 +183,49 @@
 .victory-action-btn {
   width: 100%;
   justify-content: center;
+  background: linear-gradient(135deg, #65469d, #302044);
+  border: 1px solid rgba(169, 139, 232, 0.5);
+  box-shadow: 0 10px 20px rgba(48, 32, 68, 0.5);
 }
 
-/* Animações */
-.animate-pop-in {
-  animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+.victory-action-btn:hover {
+  background: linear-gradient(135deg, #7c58c2, #472f66);
+  border-color: #d8c3ff;
+  transform: translateY(-2px);
 }
 
-.animate-bounce {
-  animation: bounceFloat 3s infinite ease-in-out;
+/* =========================================
+   ANIMAÇÕES DE ENTRADA (Em Cascata)
+========================================= */
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
 }
 
-@keyframes popIn {
-  0% { opacity: 0; transform: scale(0.9) translateY(30px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+/* Define o estado inicial invisível para a cascata */
+.stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5 {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: popUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Atrasos calculados para cada elemento aparecer um após o outro */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+@keyframes fadeIn {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes popUp {
+  0% { opacity: 0; transform: translateY(20px) scale(0.95); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes bounceFloat {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-15px); }
+  50% { transform: translateY(-12px); }
 }
