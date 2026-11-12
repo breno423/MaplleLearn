@@ -27,8 +27,9 @@ import {
 import { supabase } from './lib/supabase';
 import './App.css';
 import FriendsPanel from './components/friends/FriendsPanel';
+import VictoryScreen from './components/match/VictoryScreen';
 
-function Maplle() {
+export function Maplle() {
   return (
     <svg
       className="maplle"
@@ -2620,7 +2621,10 @@ export default function App() {
                           )}
 
                           {matchFinished ? (
-                            <h3>Partida finalizada! 🏆</h3>
+                            <div className="match-waiting">
+                              <Sparkles size={18} />
+                              Calculando resultados finais...
+                            </div>
                           ) : roundCompleted ? (
                             <div className="match-next-turn">
                               <p>
@@ -2659,6 +2663,16 @@ export default function App() {
               )}
             </div>
           </div>
+
+          {/* ADICIONE O MODAL AQUI */}
+          {matchFinished && (
+            <VictoryScreen
+              myScore={myScore}
+              opponentScore={opponentScore}
+              opponentName={members.find((member) => member.user_id !== currentUserId)?.display_name || 'Adversário'}
+              onLeave={leaveRoom}
+            />
+          )}
         </section>
       )}
 

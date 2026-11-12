@@ -1,0 +1,131 @@
+.victory-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 16, 25, 0.85); /* Tom escuro inspirado no gradient do Maplle */
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  padding: 24px;
+}
+
+.victory-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 48px 32px 32px;
+  width: 100%;
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  position: relative;
+  color: #111019;
+}
+
+.victory-mascot-container {
+  width: 140px;
+  height: 140px;
+  margin-top: -100px;
+  margin-bottom: 16px;
+  filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.2));
+}
+
+.victory-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #65469d;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.victory-title {
+  font-size: 2.2rem;
+  margin: 0 0 8px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+
+.text-win { color: #397c63; } /* Verde vitória */
+.text-tie { color: #a98be8; } /* Roxo empate */
+.text-loss { color: #e53e3e; } /* Vermelho derrota */
+
+.victory-subtitle {
+  color: #4a5568;
+  margin-bottom: 32px;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.victory-scoreboard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 32px;
+  border: 1px solid #e2e8f0;
+}
+
+.score-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 4px;
+}
+
+.score-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #718096;
+  letter-spacing: 0.5px;
+}
+
+.score-value {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #2d3748;
+}
+
+.score-winner .score-value {
+  color: #65469d; /* Roxo principal do tema */
+}
+
+.score-divider {
+  font-weight: 800;
+  color: #cbd5e0;
+  font-size: 1.2rem;
+  padding: 0 16px;
+}
+
+.victory-action-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Animações */
+.animate-pop-in {
+  animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-bounce {
+  animation: bounceFloat 3s infinite ease-in-out;
+}
+
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.9) translateY(30px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes bounceFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-15px); }
+}
